@@ -65,11 +65,27 @@ app.get('/api/dob/:rollNo', (req, res) => {
 // 3. Save / Upsert Student Result explicitly to MongoDB
 app.post('/api/save-result', async (req, res) => {
   try {
-    const marksheetData = req.body;
+    let marksheetData = req.body;
     if (!marksheetData || !marksheetData.studentInfo || !marksheetData.studentInfo.rollNo) {
       return res.status(400).json({ success: false, error: 'Invalid marksheet payload' });
     }
+
+    // If payload has semesters array, map to our sessions schema
+    if (marksheetData.semesters && Array.isArray(marksheetData.semesters)) {
+      const { mapTargetSchemaToOurSchema } = require('./services/oneviewFetcher');
+      marksheetData = mapTargetSchemaToOurSchema(marksheetData);
+    }
+
     const saved = await storageService.saveStudentResult(marksheetData);
+
+    // Record in Search Log as live OneView scraped
+    await storageService.logSearch({
+      rollNo: marksheetData.studentInfo.rollNo,
+      status: 'Success (Live OneView Scraped)',
+      studentName: marksheetData.studentInfo.name || '',
+      college: marksheetData.studentInfo.institute || ''
+    });
+
     res.json({ success: true, data: saved });
   } catch (err) {
     console.error('Error saving result:', err.message);

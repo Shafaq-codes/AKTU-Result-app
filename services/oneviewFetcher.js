@@ -4,6 +4,50 @@ const storageService = require('./storageService');
 /**
  * Maps target schema from akturesultdesk.vercel.app to our internal OneView marksheet schema
  */
+function parseSemesterNumber(val) {
+  if (!val) return 1;
+  const str = String(val).trim().toUpperCase();
+  if (str === 'I' || str === 'SEM 1' || str === '1') return 1;
+  if (str === 'II' || str === 'SEM 2' || str === '2') return 2;
+  if (str === 'III' || str === 'SEM 3' || str === '3') return 3;
+  if (str === 'IV' || str === 'SEM 4' || str === '4') return 4;
+  if (str === 'V' || str === 'SEM 5' || str === '5') return 5;
+  if (str === 'VI' || str === 'SEM 6' || str === '6') return 6;
+  if (str === 'VII' || str === 'SEM 7' || str === '7') return 7;
+  if (str === 'VIII' || str === 'SEM 8' || str === '8') return 8;
+  const num = parseInt(str.replace(/[^0-9]/g, ''));
+  return isNaN(num) ? 1 : num;
+}
+
+function buildSemesterObj(sem) {
+  if (!sem) return null;
+  const semNum = parseSemesterNumber(sem.semester);
+  const isOdd = sem.evenOdd ? sem.evenOdd.toLowerCase().includes('odd') : (semNum % 2 !== 0);
+  return {
+    semesterId: sem.semester || String(semNum),
+    evenOdd: sem.evenOdd || (isOdd ? 'Odd' : 'Even'),
+    totalSubjects: (sem.subjects || []).length,
+    theorySubjects: (sem.subjects || []).filter(sub => (sub.type || 'Theory').toLowerCase() === 'theory').length,
+    practicalSubjects: (sem.subjects || []).filter(sub => (sub.type || '').toLowerCase() === 'practical').length,
+    totalMarksObtained: sem.totalMarksObt || '',
+    resultStatus: sem.resultStatus || '',
+    sgpa: sem.sgpa || '',
+    dateOfDeclaration: sem.declarationDate || '',
+    declared: true,
+    subjects: (sem.subjects || []).map(sub => ({
+      code: sub.code || '',
+      name: sub.name || '',
+      internal: sub.internal !== undefined ? String(sub.internal) : '',
+      external: sub.external !== undefined ? String(sub.external) : '',
+      backPaper: sub.backPaper || '--',
+      grade: sub.grade || '--'
+    }))
+  };
+}
+
+/**
+ * Maps target schema to our internal OneView marksheet schema
+ */
 function mapTargetSchemaToOurSchema(targetData) {
   const { studentInfo, semesters } = targetData;
   if (!studentInfo || !semesters) {
@@ -21,50 +65,26 @@ function mapTargetSchemaToOurSchema(targetData) {
 
   const sessions = Object.keys(sessionsMap).map(sessionName => {
     const sems = sessionsMap[sessionName];
-    const oddSem = sems.find(s => s.evenOdd && (s.evenOdd.toLowerCase() === 'odd' || parseInt(s.semester) % 2 !== 0));
-    const evenSem = sems.find(s => s.evenOdd && (s.evenOdd.toLowerCase() === 'even' || parseInt(s.semester) % 2 === 0));
+    let oddSem = sems.find(s => {
+      const num = parseSemesterNumber(s.semester);
+      return (s.evenOdd && s.evenOdd.toLowerCase().includes('odd')) || (num % 2 !== 0);
+    });
+    let evenSem = sems.find(s => {
+      const num = parseSemesterNumber(s.semester);
+      return (s.evenOdd && s.evenOdd.toLowerCase().includes('even')) || (num % 2 === 0);
+    });
 
-    const oddSemesterObj = oddSem ? {
-      semesterId: oddSem.semester,
-      evenOdd: oddSem.evenOdd || 'Odd',
-      totalSubjects: (oddSem.subjects || []).length,
-      theorySubjects: (oddSem.subjects || []).filter(sub => sub.type === 'Theory').length,
-      practicalSubjects: (oddSem.subjects || []).filter(sub => sub.type === 'Practical').length,
-      totalMarksObtained: oddSem.totalMarksObt || '',
-      resultStatus: oddSem.resultStatus || '',
-      sgpa: oddSem.sgpa || '',
-      dateOfDeclaration: oddSem.declarationDate || '',
-      declared: true,
-      subjects: (oddSem.subjects || []).map(sub => ({
-        code: sub.code || '',
-        name: sub.name || '',
-        internal: sub.internal !== undefined ? String(sub.internal) : '',
-        external: sub.external !== undefined ? String(sub.external) : '',
-        backPaper: sub.backPaper || '--',
-        grade: sub.grade || '--'
-      }))
-    } : null;
+    if (!oddSem && !evenSem && sems.length > 0) {
+      oddSem = sems[0];
+      if (sems.length > 1) evenSem = sems[1];
+    } else if (oddSem && !evenSem && sems.length > 1) {
+      evenSem = sems.find(s => s !== oddSem);
+    } else if (!oddSem && evenSem && sems.length > 1) {
+      oddSem = sems.find(s => s !== evenSem);
+    }
 
-    const evenSemesterObj = evenSem ? {
-      semesterId: evenSem.semester,
-      evenOdd: evenSem.evenOdd || 'Even',
-      totalSubjects: (evenSem.subjects || []).length,
-      theorySubjects: (evenSem.subjects || []).filter(sub => sub.type === 'Theory').length,
-      practicalSubjects: (evenSem.subjects || []).filter(sub => sub.type === 'Practical').length,
-      totalMarksObtained: evenSem.totalMarksObt || '',
-      resultStatus: evenSem.resultStatus || '',
-      sgpa: evenSem.sgpa || '',
-      dateOfDeclaration: evenSem.declarationDate || '',
-      declared: true,
-      subjects: (evenSem.subjects || []).map(sub => ({
-        code: sub.code || '',
-        name: sub.name || '',
-        internal: sub.internal !== undefined ? String(sub.internal) : '',
-        external: sub.external !== undefined ? String(sub.external) : '',
-        backPaper: sub.backPaper || '--',
-        grade: sub.grade || '--'
-      }))
-    } : null;
+    const oddSemesterObj = buildSemesterObj(oddSem);
+    const evenSemesterObj = buildSemesterObj(evenSem);
 
     const cops = [];
     sems.forEach(s => {

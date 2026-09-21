@@ -64,8 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Show Loading Overlay
     loadingOverlay.style.display = 'flex';
-    loadingTitle.textContent = 'Retrieving OneView Record...';
-    loadingSubtext.textContent = 'Fetching complete marksheet and semester details';
+    loadingTitle.textContent = 'Checking Database Records...';
+    loadingSubtext.textContent = 'Looking up student record and semester data';
 
     try {
       const response = await fetch('/api/check-result', {
@@ -76,8 +76,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const resData = await response.json();
 
-      if (response.ok && resData.success && resData.data) {
-        // Cache result in localStorage for result.html
+      // If full authentic marksheet is already cached in MongoDB, display immediately
+      if (response.ok && resData.success && resData.source === 'cache' && resData.data && resData.data.sessions && resData.data.sessions.length > 0) {
         localStorage.setItem('aktu_result_cache', JSON.stringify(resData.data));
         localStorage.setItem('last_searched_roll', rollNo);
 
@@ -86,11 +86,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setTimeout(() => {
           window.location.href = `/result.html?rollNo=${encodeURIComponent(rollNo)}`;
-        }, 400);
+        }, 300);
+        return;
+      }
+
+      // If not in cache or semester records need live fetching:
+      // 1. Get student DOB
+      let dob = (resData && resData.dob) ? resData.dob : '';
+      if (!dob) {
+        try {
+          const dobResp = await fetch(`/api/dob/${rollNo}`);
+          const dobJson = await dobResp.json();
+          if (dobJson.success && dobJson.dob) {
+            dob = dobJson.dob;
+          }
+        } catch (e) {}
+      }
+
+      if (!dob) {
+        loadingOverlay.style.display = 'none';
+        dob = prompt('Student DOB not found in registry. Please enter Date of Birth (DD/MM/YYYY):');
+        if (!dob || dob.trim().length < 6) {
+          alert('Valid Date of Birth is required to access official AKTU OneView.');
+          return;
+        }
+        dob = dob.trim();
+        loadingOverlay.style.display = 'flex';
+      }
+
+      // 2. Check if Android Native Bridge is available
+      if (window.AndroidBridge && typeof window.AndroidBridge.startOneViewVerification === 'function') {
+        loadingOverlay.style.display = 'none';
+        window.AndroidBridge.startOneViewVerification(rollNo, dob);
+        return;
+      }
+
+      // 3. Fallback for Web Browser: If cached basic record is present
+      if (response.ok && resData.success && resData.data) {
+        localStorage.setItem('aktu_result_cache', JSON.stringify(resData.data));
+        localStorage.setItem('last_searched_roll', rollNo);
+        window.location.href = `/result.html?rollNo=${encodeURIComponent(rollNo)}`;
       } else {
         loadingOverlay.style.display = 'none';
-        const errMsg = resData.error || 'Unable to retrieve result for this roll number.';
-        alert(errMsg);
+        alert('Please open this search in the Android App to solve the AKTU Captcha and load the official marksheet.');
       }
     } catch (err) {
       loadingOverlay.style.display = 'none';
@@ -98,4 +136,14 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Connection error. Please ensure the server is active and try again.');
     }
   }
+
+  // Callback when OneView result is scraped and saved
+  window.onOneViewResultReceived = function(rollNo) {
+    loadingOverlay.style.display = 'flex';
+    loadingTitle.textContent = 'Official Marksheet Scraped!';
+    loadingSubtext.textContent = 'Loading your result...';
+    setTimeout(() => {
+      window.location.href = `/result.html?rollNo=${encodeURIComponent(rollNo)}`;
+    }, 400);
+  };
 });

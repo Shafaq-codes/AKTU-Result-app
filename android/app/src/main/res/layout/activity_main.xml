@@ -4,6 +4,7 @@
     android:layout_height="match_parent"
     android:background="#1a202c">
 
+    <!-- Main App Progress Bar -->
     <ProgressBar
         android:id="@+id/progressBar"
         style="?android:attr/progressBarStyleHorizontal"
@@ -14,10 +15,86 @@
         android:max="100"
         android:visibility="gone" />
 
+    <!-- Main App WebView -->
     <WebView
         android:id="@+id/webView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@id/progressBar" />
+
+    <!-- Live AKTU OneView Verification Container (Overlay) -->
+    <RelativeLayout
+        android:id="@+id/verificationContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#F8FAFC"
+        android:visibility="gone">
+
+        <!-- Top Header Bar -->
+        <RelativeLayout
+            android:id="@+id/verificationHeader"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:background="#721313"
+            android:paddingHorizontal="16dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvVerificationTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="AKTU OneView Verification"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvVerificationSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Solve Captcha below to view live marksheet"
+                    android:textColor="#FEE2E2"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/btnCancelVerification"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:gravity="center"
+                android:text="✕"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true" />
+        </RelativeLayout>
+
+        <!-- Verification Loading Progress -->
+        <ProgressBar
+            android:id="@+id/verificationProgressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_below="@id/verificationHeader"
+            android:indeterminate="true"
+            android:visibility="gone" />
+
+        <!-- Verification WebView pointing to https://erp.aktu.ac.in/webpages/oneview/oneview.aspx -->
+        <WebView
+            android:id="@+id/verificationWebView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_below="@id/verificationProgressBar" />
+
+    </RelativeLayout>
 
 </RelativeLayout>
