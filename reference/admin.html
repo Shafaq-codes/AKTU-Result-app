@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Credentials | AKTU OneView Admin</title>
+  <link rel="icon" href="https://erp.aktu.ac.in/Images/Site/FileHandler-new.png" type="image/png">
+  <style>
+    body.admin-body {
+      background-color: #f4f6f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1a202c;
+    }
+
+    .admin-login-card {
+      width: 100%;
+      max-width: 440px;
+      background-color: #ffffff;
+      padding: 50px 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.06);
+      border: 1px solid rgba(0, 0, 0, 0.03);
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    .admin-login-title {
+      font-size: 32px;
+      font-weight: 750;
+      color: #072214;
+      margin: 0 0 12px 0;
+      letter-spacing: -0.5px;
+    }
+
+    .admin-login-subtitle {
+      font-size: 15px;
+      color: #4a5568;
+      line-height: 1.5;
+      margin: 0 0 35px 0;
+      padding: 0 10px;
+    }
+
+    .admin-input-group {
+      margin-bottom: 22px;
+      position: relative;
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #4a5568;
+      display: flex;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .input-icon svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
+    .admin-input {
+      width: 100%;
+      padding: 14px 16px 14px 44px;
+      background-color: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      color: #1a202c;
+      font-size: 15px;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .admin-input::placeholder {
+      color: #94a3b8;
+    }
+
+    .admin-input:focus {
+      border-color: #198754;
+      box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.15);
+    }
+
+    .admin-login-btn {
+      width: 100%;
+      padding: 14px;
+      background-color: #198754;
+      border: none;
+      border-radius: 8px;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+
+    .admin-login-btn:hover {
+      background-color: #157347;
+    }
+
+    .admin-login-btn:active {
+      transform: scale(0.99);
+    }
+
+    .error-msg {
+      color: #dc2626;
+      font-size: 13px;
+      margin-top: 15px;
+      font-weight: 600;
+      min-height: 20px;
+    }
+
+    @media (max-width: 480px) {
+      .admin-login-card {
+        padding: 35px 20px;
+        margin: 20px;
+      }
+      .admin-login-title {
+        font-size: 26px;
+      }
+      .admin-login-subtitle {
+        font-size: 13.5px;
+        margin-bottom: 25px;
+      }
+    }
+  </style>
+</head>
+<body class="admin-body">
+
+  <div class="admin-login-card">
+    <h1 class="admin-login-title">Admin Credentials</h1>
+    <p class="admin-login-subtitle">Enter the administrator secret key to view query analytics and server logs.</p>
+
+    <div class="admin-input-group">
+      <span class="input-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 17a2 2 0 0 0 2-2 2 2 0 0 0-2-2 2 2 0 0 0-2 2 2 2 0 0 0 2 2m6-9h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2m-6-6a3 3 0 0 1 3 3v2H9V5a3 3 0 0 1 3-3Z"/>
+        </svg>
+      </span>
+      <input type="password" id="passwordInput" class="admin-input" placeholder="Enter Secret Key" autofocus>
+    </div>
+
+    <button id="loginBtn" class="admin-login-btn">
+      Unlock Console 🔓
+    </button>
+    <div id="errorMsg" class="error-msg"></div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const loginBtn = document.getElementById('loginBtn');
+      const passwordInput = document.getElementById('passwordInput');
+      const errorMsg = document.getElementById('errorMsg');
+
+      // Check if already logged in
+      const existingToken = localStorage.getItem('aktu_admin_token');
+      if (existingToken === 'aktu-admin-session-token-9988') {
+        window.location.href = '/admin-dashboard.html';
+      }
+
+      async function attemptLogin() {
+        const password = passwordInput.value.trim();
+
+        if (!password) {
+          errorMsg.innerText = "Please enter the secret key.";
+          return;
+        }
+
+        loginBtn.innerHTML = "Unlocking... 🔓";
+        loginBtn.disabled = true;
+        errorMsg.innerText = "";
+
+        try {
+          const response = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ password })
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            localStorage.setItem('aktu_admin_token', data.token);
+            window.location.href = '/admin-dashboard.html';
+          } else {
+            errorMsg.innerText = data.error || "Authentication failed.";
+            loginBtn.innerHTML = "Unlock Console 🔓";
+            loginBtn.disabled = false;
+          }
+        } catch (err) {
+          console.error(err);
+          errorMsg.innerText = "Server connection lost.";
+          loginBtn.innerHTML = "Unlock Console 🔓";
+          loginBtn.disabled = false;
+        }
+      }
+
+      loginBtn.addEventListener('click', attemptLogin);
+      passwordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          attemptLogin();
+        }
+      });
+    });
+  </script>
+</body>
+</html>

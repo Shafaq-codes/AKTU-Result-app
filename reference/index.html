@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AKTU Result – Check AKTU Result without DOB</title>
+  
+  <!-- Auth Guard: Validate persistent session in localStorage and Cookie -->
+  <script>
+    (function() {
+      try {
+        function getCookie(name) {
+          const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+          return match ? decodeURIComponent(match[2]) : null;
+        }
+        let session = localStorage.getItem('aktu_user_session');
+        if (!session) {
+          session = getCookie('aktu_user_session');
+          if (session) localStorage.setItem('aktu_user_session', session);
+        }
+        if (!session) {
+          window.location.replace('/login.html');
+          return;
+        }
+        const parsed = JSON.parse(session);
+        if (!parsed || !parsed.email) {
+          localStorage.removeItem('aktu_user_session');
+          window.location.replace('/login.html');
+        }
+      } catch (e) {
+        window.location.replace('/login.html');
+      }
+    })();
+  </script>
+
+  <!-- Service Worker Registration for Instant Offline Cache -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js?v=20260903_v1').catch(() => {});
+      });
+    }
+  </script>
+
+  <link rel="stylesheet" href="style.css?v=20260818_v2">
+  <link rel="icon" href="https://erp.aktu.ac.in/Images/Site/FileHandler-new.png" type="image/png">
+</head>
+<body class="search-body">
+  
+  <!-- Authenticated Top Navigation Header -->
+  <div class="auth-top-header">
+    <div class="user-profile-badge" id="userBadge" style="display: none;">
+      <img id="userAvatarImg" src="https://cdn-icons-png.flaticon.com/512/847/847969.png" alt="Profile" class="user-avatar">
+      <div class="user-info-text">
+        <span class="user-display-name" id="userDisplayName">Student</span>
+        <span class="user-display-email" id="userDisplayEmail">user@gmail.com</span>
+      </div>
+      <a href="javascript:void(0)" class="logout-link" id="logoutBtn" title="Sign out from this session">Logout</a>
+    </div>
+
+    <!-- Navigation to Name Search -->
+    <a href="/name-search.html" class="top-right-nav-btn">Search by Name</a>
+  </div>
+
+  <div class="search-card" style="position: relative; overflow: hidden;">
+    
+    <!-- Loading Overlay -->
+    <div class="loading-box" id="loadingOverlay">
+      <img src="https://oneview.aktu.ac.in/Images/Site/loading.gif" alt="Loading" class="loader-gif">
+      <div class="loader-title" id="loadingStateText">Connecting...</div>
+      <div style="font-size: 10px; color: #666666;" id="loadingSubtext">Retrieving result from database...</div>
+    </div>
+
+    <!-- Official AKTU Logo -->
+    <img src="https://erp.aktu.ac.in/Images/Site/FileHandler-new.png" alt="AKTU Logo" class="search-logo">
+    
+    <!-- English Title -->
+    <h1 class="search-title">AKTU OneView</h1>
+    
+    <!-- Roll Number Input -->
+    <div class="input-group">
+      <input type="text" id="rollNumberInput" placeholder="Enter Roll Number" class="roll-input" maxlength="15" autocomplete="off">
+    </div>
+    
+    <!-- English Button -->
+    <button class="proceed-btn" id="searchBtn">SEARCH</button>
+  </div>
+
+  <script src="security.js?v=20260822_v1"></script>
+  <script src="students-data.js?v=20260903_v1"></script>
+  <script src="app.js?v=20260903_v1"></script>
+</body>
+</html>

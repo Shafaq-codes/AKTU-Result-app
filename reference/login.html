@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AKTU Result – Sign In with Google</title>
+  <link rel="stylesheet" href="style.css?v=20260819_v5">
+  <link rel="icon" href="https://erp.aktu.ac.in/Images/Site/FileHandler-new.png" type="image/png">
+  
+  <!-- Dual Auth Guard: Check localStorage and Cookie -->
+  <script>
+    (function() {
+      try {
+        function getCookie(name) {
+          const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+          return match ? decodeURIComponent(match[2]) : null;
+        }
+        let session = localStorage.getItem('aktu_user_session');
+        if (!session) {
+          session = getCookie('aktu_user_session');
+          if (session) localStorage.setItem('aktu_user_session', session);
+        }
+        if (session) {
+          const parsed = JSON.parse(session);
+          if (parsed && parsed.email) {
+            window.location.replace('/index.html');
+          }
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+  <!-- Google Identity Services (GIS) Client SDK -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    #googleBtnContainer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: auto !important;
+      max-width: 220px !important;
+      margin: 15px auto 10px auto !important;
+      overflow: visible !important;
+    }
+    #googleBtnContainer > div,
+    #googleBtnContainer iframe {
+      margin: 0 auto !important;
+    }
+  </style>
+</head>
+<body class="search-body">
+
+  <div class="search-card" style="position: relative; overflow: hidden; max-width: 440px;">
+    
+    <!-- Loading Overlay -->
+    <div class="loading-box" id="authLoadingOverlay" style="display: none;">
+      <img src="https://oneview.aktu.ac.in/Images/Site/loading.gif" alt="Loading" class="loader-gif">
+      <div class="loader-title" id="authLoadingText">Authenticating with Google...</div>
+      <div style="font-size: 10px; color: #666666;" id="authLoadingSubtext">Verifying account access...</div>
+    </div>
+
+    <!-- Official AKTU Logo -->
+    <img src="https://erp.aktu.ac.in/Images/Site/FileHandler-new.png" alt="AKTU Logo" class="search-logo">
+    
+    <!-- Title -->
+    <h1 class="search-title" style="margin-bottom: 25px;">AKTU Result</h1>
+
+    <!-- Official Google Identity Button Container -->
+    <div id="googleBtnContainer">
+      <!-- Google Button will be rendered here -->
+    </div>
+
+    <!-- Error message display if any -->
+    <div id="authErrorMsg" style="display: none; color: #c00; font-size: 11px; margin-top: 15px; font-weight: bold;"></div>
+
+  </div>
+
+  <script src="security.js?v=20260822_v1"></script>
+  <script src="login.js?v=20260903_v1"></script>
+</body>
+</html>

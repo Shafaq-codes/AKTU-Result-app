@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Credentials | AKTU OneView Admin</title>
+  <link rel="icon" href="/assets/aktu_logo.png" type="image/png">
+  <style>
+    body.admin-body {
+      background-color: #f4f6f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1a202c;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    .admin-login-card {
+      width: 100%;
+      max-width: 440px;
+      background-color: #ffffff;
+      padding: 45px 35px;
+      border-radius: 16px;
+      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.08);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    .admin-icon-wrapper {
+      width: 60px;
+      height: 60px;
+      background: #eef2ff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px auto;
+      color: #4f46e5;
+    }
+
+    .admin-login-title {
+      font-size: 26px;
+      font-weight: 750;
+      color: #072214;
+      margin: 0 0 10px 0;
+      letter-spacing: -0.5px;
+    }
+
+    .admin-login-subtitle {
+      font-size: 14px;
+      color: #64748b;
+      line-height: 1.5;
+      margin: 0 0 30px 0;
+      padding: 0 10px;
+    }
+
+    .admin-input-group {
+      margin-bottom: 22px;
+      position: relative;
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .admin-input {
+      width: 100%;
+      padding: 14px 16px 14px 44px;
+      background-color: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      color: #1a202c;
+      font-size: 15px;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .admin-input::placeholder {
+      color: #94a3b8;
+    }
+
+    .admin-input:focus {
+      border-color: #198754;
+      box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.15);
+    }
+
+    .admin-login-btn {
+      width: 100%;
+      padding: 14px;
+      background-color: #198754;
+      border: none;
+      border-radius: 8px;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+
+    .admin-login-btn:hover {
+      background-color: #157347;
+    }
+
+    .admin-login-btn:active {
+      transform: scale(0.99);
+    }
+
+    .error-msg {
+      color: #dc2626;
+      font-size: 13px;
+      margin-top: 15px;
+      display: none;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body class="admin-body">
+
+  <div class="admin-login-card">
+    <div class="admin-icon-wrapper">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+      </svg>
+    </div>
+    <h1 class="admin-login-title">Admin Credentials</h1>
+    <p class="admin-login-subtitle">Enter your security password to access the result query server logs.</p>
+
+    <form id="adminLoginForm">
+      <div class="admin-input-group">
+        <span class="input-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </span>
+        <input type="password" id="passwordInput" class="admin-input" placeholder="Enter password" required autofocus>
+      </div>
+
+      <button type="submit" class="admin-login-btn" id="loginBtn">
+        Unlock Console
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+
+      <div class="error-msg" id="errorMsg">Incorrect admin password.</div>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const password = document.getElementById('passwordInput').value.trim();
+      const errorMsg = document.getElementById('errorMsg');
+      const loginBtn = document.getElementById('loginBtn');
+
+      errorMsg.style.display = 'none';
+      loginBtn.innerText = 'Verifying...';
+
+      try {
+        const resp = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+          localStorage.setItem('aktu_admin_token', data.token);
+          window.location.href = '/admin-dashboard.html';
+        } else {
+          errorMsg.textContent = data.error || 'Incorrect admin password.';
+          errorMsg.style.display = 'block';
+          loginBtn.innerText = 'Unlock Console';
+        }
+      } catch (err) {
+        errorMsg.textContent = 'Server communication error.';
+        errorMsg.style.display = 'block';
+        loginBtn.innerText = 'Unlock Console';
+      }
+    });
+  </script>
+</body>
+</html>

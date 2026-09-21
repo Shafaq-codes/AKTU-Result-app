@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AKTU OneView – Student Result</title>
+
+  <!-- Auth Guard: Validate persistent session in localStorage and Cookie -->
+  <script>
+    (function() {
+      try {
+        function getCookie(name) {
+          const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+          return match ? decodeURIComponent(match[2]) : null;
+        }
+        let session = localStorage.getItem('aktu_user_session');
+        if (!session) {
+          session = getCookie('aktu_user_session');
+          if (session) localStorage.setItem('aktu_user_session', session);
+        }
+        if (!session) {
+          window.location.replace('/login.html');
+          return;
+        }
+        const parsed = JSON.parse(session);
+        if (!parsed || !parsed.email) {
+          localStorage.removeItem('aktu_user_session');
+          window.location.replace('/login.html');
+        }
+      } catch (e) {
+        window.location.replace('/login.html');
+      }
+    })();
+  </script>
+
+  <!-- Service Worker Registration for Instant Offline Cache -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js?v=20260903_v2').catch(() => {});
+      });
+    }
+  </script>
+
+  <link rel="stylesheet" href="style.css?v=20260903_v2">
+  <link rel="icon" href="https://erp.aktu.ac.in/Images/Site/FileHandler-new.png" type="image/png">
+</head>
+<body class="result-body">
+  
+  <div class="container">
+    
+    <!-- Top banner image -->
+    <div class="banner-wrapper">
+      <img src="https://oneview.aktu.ac.in/Images/Site/AKTUBanner.jpg" alt="AKTU Banner" class="banner-img">
+    </div>
+
+    <div style="text-align: center; font-weight: bold; font-size: 13px; margin: 15px 0 25px 0; color: #0066cc;">
+      AKTU-One-View
+    </div>
+
+    <!-- Student Result Header -->
+    <div class="section-title">Student Result</div>
+
+    <!-- Student Personal Info Grid Table -->
+    <table class="student-table" id="studentProfileCard">
+      <tr>
+        <td class="label-cell">Institute Code & Name</td>
+        <td class="colon-cell">:</td>
+        <td id="studentInstitute">--</td>
+        
+        <td class="label-cell">Branch Code & Name</td>
+        <td class="colon-cell">:</td>
+        <td id="studentBranch">--</td>
+        
+        <!-- Print cell -->
+        <td rowspan="5" style="width: 120px; text-align: center; background-color: #fafafa; border-left: 2px solid #dddddd;">
+          <a href="#" class="print-link" id="printLink">Print One View</a>
+        </td>
+      </tr>
+      <tr>
+        <td class="label-cell">Course Code & Name</td>
+        <td class="colon-cell">:</td>
+        <td id="studentCourse">--</td>
+        
+        <td class="label-cell">EnrollmentNo</td>
+        <td class="colon-cell">:</td>
+        <td id="studentEnroll">--</td>
+      </tr>
+      <tr>
+        <td class="label-cell">RollNo</td>
+        <td class="colon-cell">:</td>
+        <td id="studentRoll">--</td>
+        
+        <td class="label-cell">Hindi Name</td>
+        <td class="colon-cell">:</td>
+        <td id="studentHindiName" style="font-family: Arial, sans-serif;">--</td>
+      </tr>
+      <tr>
+        <td class="label-cell">Name</td>
+        <td class="colon-cell">:</td>
+        <td id="studentName">--</td>
+        
+        <td class="label-cell">Gender</td>
+        <td class="colon-cell">:</td>
+        <td id="studentGender">--</td>
+      </tr>
+      <tr>
+        <td class="label-cell">Father's Name</td>
+        <td class="colon-cell">:</td>
+        <td id="studentFather">--</td>
+        
+        <td colspan="3" style="background-color: #fcfcfc;"></td>
+      </tr>
+    </table>
+
+
+    <!-- One View Result header -->
+    <div class="section-title">One View Result</div>
+
+    <!-- Grouped Sessions Container -->
+    <div id="sessionsContainer">
+      <!-- Session blocks containing side-by-side semester grids will be injected dynamically -->
+    </div>
+
+    <!-- Minor/Major Result header bar -->
+    <div class="session-panel" style="margin-top: 25px;">
+      <div class="session-bar" id="minorResHeader">Minor/Major Result</div>
+      <div class="session-content" id="minorResContent" style="padding: 15px; background-color: #ffffff; border: 1px solid #dddddd; border-top: none;">
+        <table class="marks-grid-table">
+          <tr>
+            <td style="text-align: center; color: #666666;">No Result found.</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- MOOCs Certifications header bar -->
+    <div class="session-panel" style="margin-top: 15px;">
+      <div class="session-bar" id="moocsHeader">MOOCs Certifications</div>
+      <div class="session-content" id="moocsContent" style="padding: 15px; background-color: #ffffff; border: 1px solid #dddddd; border-top: none;">
+        <table class="marks-grid-table">
+          <tr>
+            <td style="text-align: center; color: #666666;">No Certifications found.</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Red Warning Footer Note -->
+    <div class="footer-note">
+      Note: University doesn't own for the errors or omissions, if any, in this statement.<br>
+      Designed & Developed by AKTU-SDC Team
+    </div>
+
+    <!-- New Search link/button at the very bottom -->
+    <div style="text-align: center; margin: 30px 0 50px 0;" class="no-print">
+      <button class="proceed-btn active" id="newSearchBtn" style="width: auto; padding: 10px 25px; display: inline-block;">New Search</button>
+    </div>
+
+  </div>
+
+  <script src="students-data.js?v=20260903_v3"></script>
+  <script src="security.js?v=20260822_v1"></script>
+  <script src="result.js?v=20260903_v3"></script>
+</body>
+</html>

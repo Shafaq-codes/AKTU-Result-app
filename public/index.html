@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AKTU OneView – Student Result Portal</title>
+  <link rel="icon" href="/assets/aktu_logo.png" type="image/png">
+  <link rel="stylesheet" href="/css/style.css">
+  <meta name="theme-color" content="#721313">
+</head>
+<body class="search-body">
+
+  <div class="search-card">
+    <img src="/assets/aktu_logo.png" alt="AKTU Emblem" class="search-logo">
+    <h1 class="search-title">AKTU OneView</h1>
+
+    <!-- Auto DOB Match Pill -->
+    <div class="dob-badge" id="dobBadge">
+      <span class="badge-icon">✓</span>
+      <span class="badge-text" id="dobBadgeText">Student Identified</span>
+    </div>
+
+    <!-- Roll Input -->
+    <div class="input-group">
+      <input 
+        type="tel" 
+        id="rollNumberInput" 
+        class="roll-input" 
+        placeholder="Enter Roll Number" 
+        maxlength="14"
+        autocomplete="off"
+        autofocus
+      >
+    </div>
+
+    <!-- Search Button -->
+    <div style="text-align: center; margin-top: 20px;">
+      <button class="proceed-btn" id="searchBtn">
+        SEARCH
+      </button>
+    </div>
+
+    <!-- App Download / Quick Links -->
+    <div class="search-footer-links">
+      <a href="/download">📲 Download Android APK</a>
+      <a href="/download" style="color: #15803d; font-weight: bold;">v1.1 APK</a>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-box">
+      <div class="loading-spinner"></div>
+      <div class="loading-title" id="loadingTitle">Checking Records...</div>
+      <div class="loading-subtext" id="loadingSubtext">Connecting to AKTU Academic Server</div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
