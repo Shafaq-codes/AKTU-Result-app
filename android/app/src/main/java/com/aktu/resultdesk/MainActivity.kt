@@ -225,9 +225,14 @@ class MainActivity : AppCompatActivity() {
                     rollInput.dispatchEvent(new Event('blur', {bubbles:true}));
                 }
 
+                if (typeof Page_ValidationActive !== 'undefined') {
+                    Page_ValidationActive = false;
+                }
+
                 var btnProceed = document.getElementById('btnProceed');
                 if (btnProceed) {
                     setTimeout(function() {
+                        if (typeof Page_ValidationActive !== 'undefined') Page_ValidationActive = false;
                         btnProceed.click();
                     }, 400);
                 } else if (typeof __doPostBack === 'function') {
@@ -247,19 +252,45 @@ class MainActivity : AppCompatActivity() {
         tvVerificationSubtitle.text = "DOB: $currentDob • Solve Captcha below to continue"
         verificationProgressBar.visibility = View.GONE
 
+        val cleanDob = currentDob.replace("-", "/").trim()
+
         val script = """
             (function() {
-                // 1. Fill DOB
+                // 1. Fill DOB (format DD/MM/YYYY)
                 var dobInput = document.getElementById('txtDOB');
                 if (dobInput) {
                     dobInput.focus();
-                    dobInput.value = '$currentDob';
+                    dobInput.value = '$cleanDob';
                     dobInput.dispatchEvent(new Event('input', {bubbles:true}));
                     dobInput.dispatchEvent(new Event('change', {bubbles:true}));
                     dobInput.dispatchEvent(new Event('blur', {bubbles:true}));
                 }
 
-                // 2. Set light theme attribute on Google reCAPTCHA
+                // 2. Hide surrounding clutter directly via DOM
+                var rollWrap = document.getElementById('txtRollNo');
+                if (rollWrap && rollWrap.closest('.wrap-input100')) {
+                    rollWrap.closest('.wrap-input100').style.display = 'none';
+                }
+                var pnlDob = document.getElementById('pnlDOB');
+                if (pnlDob) pnlDob.style.display = 'none';
+                var btnSearch = document.getElementById('btnSearch');
+                if (btnSearch) btnSearch.style.display = 'none';
+                var topImg = document.querySelector('.newlogin-image');
+                if (topImg) topImg.style.display = 'none';
+                var topTitle = document.querySelector('.login100-form-title');
+                if (topTitle) topTitle.style.display = 'none';
+
+                // 3. Ensure captcha panel is centered and visible
+                var pnlCaptcha = document.getElementById('pnlCaptcha');
+                if (pnlCaptcha) {
+                    pnlCaptcha.style.display = 'flex';
+                    pnlCaptcha.style.justifyContent = 'center';
+                    pnlCaptcha.style.alignItems = 'center';
+                    pnlCaptcha.style.margin = '30px auto';
+                    pnlCaptcha.style.visibility = 'visible';
+                }
+
+                // 4. Set light theme attribute on Google reCAPTCHA
                 var gRecaptcha = document.querySelector('.g-recaptcha');
                 if (gRecaptcha) {
                     gRecaptcha.setAttribute('data-theme', 'light');
