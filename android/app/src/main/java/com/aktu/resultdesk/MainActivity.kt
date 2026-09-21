@@ -18,8 +18,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var progressBar: ProgressBar
 
-    // Change this to your deployed server URL (e.g. Render/Vercel/Localhost)
-    private val APP_URL = "http://10.0.2.2:5000"
+    // Live Deployed Backend URL on Render
+    private val APP_URL = "https://aktu-result-app.onrender.com"
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
