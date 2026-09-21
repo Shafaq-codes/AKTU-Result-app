@@ -116,6 +116,11 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupVerificationWebView() {
+        // Enable Cookie Manager to preserve ASP.NET session state across postbacks
+        val cookieManager = android.webkit.CookieManager.getInstance()
+        cookieManager.setAcceptCookie(true)
+        cookieManager.setAcceptThirdPartyCookies(verificationWebView, true)
+
         val settings = verificationWebView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
@@ -162,9 +167,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Handles AKTU OneView page state:
-     * 1. If search form: autofill Roll & DOB, isolate reCAPTCHA widget via CSS.
-     * 2. If result page: scrape live mark sheet and save to MongoDB Atlas.
+     * Handles AKTU OneView 2-step process:
+     * Step 1: Roll number input + "आगे बढ़े" (btnProceed).
+     * Step 2: DOB input + reCAPTCHA widget (btnSearch).
+     * Step 3: Result marksheet rendered.
      */
     private fun handleOneViewPageFinished(url: String) {
         val detectScript = """
@@ -172,32 +178,37 @@ class MainActivity : AppCompatActivity() {
                 var hasResult = document.querySelector('table[id*="grdViewSubjectMarksheet"]') || 
                                 document.getElementById('lblFullName') || 
                                 document.getElementById('lblRollNo');
-                var hasSearch = document.getElementById('txtRollNo') || document.getElementById('txtDOB');
-                if (hasResult) return 'RESULT_PAGE';
-                if (hasSearch) return 'SEARCH_PAGE';
-                return 'UNKNOWN';
+                if (hasResult) return 'PAGE_RESULT';
+
+                var hasFinal = document.getElementById('pnlFinalPanel') || document.getElementById('txtDOB') || document.getElementById('pnlCaptcha');
+                if (hasFinal) return 'PAGE_STEP2_CAPTCHA';
+
+                var hasRoll = document.getElementById('txtRollNo') || document.getElementById('btnProceed');
+                if (hasRoll) return 'PAGE_STEP1_ROLL';
+
+                return 'PAGE_UNKNOWN';
             })();
         """.trimIndent()
 
         verificationWebView.evaluateJavascript(detectScript) { pageType ->
             val cleanType = pageType?.replace("\"", "")?.trim() ?: ""
-            if (cleanType == "SEARCH_PAGE") {
-                injectSearchAutofillAndCaptcha()
-            } else if (cleanType == "RESULT_PAGE") {
-                injectResultScraper()
+            when (cleanType) {
+                "PAGE_STEP1_ROLL" -> handleStep1Roll()
+                "PAGE_STEP2_CAPTCHA" -> handleStep2Captcha()
+                "PAGE_RESULT" -> injectResultScraper()
             }
         }
     }
 
     /**
-     * 1. Autofills Roll Number & DOB.
-     * 2. Injects clean CSS to isolate only the Google reCAPTCHA widget.
-     * 3. Sets interval poller to auto-submit when captcha is solved.
+     * Step 1: Enters Roll Number and clicks "आगे बढ़े" (btnProceed).
      */
-    private fun injectSearchAutofillAndCaptcha() {
+    private fun handleStep1Roll() {
+        tvVerificationSubtitle.text = "Checking Roll No $currentRollNo on AKTU portal..."
+        verificationProgressBar.visibility = View.VISIBLE
+
         val script = """
             (function() {
-                // 1. Fill Roll Number
                 var rollInput = document.getElementById('txtRollNo');
                 if (!rollInput) {
                     var inputs = document.querySelectorAll('input[type=text]');
@@ -214,7 +225,31 @@ class MainActivity : AppCompatActivity() {
                     rollInput.dispatchEvent(new Event('blur', {bubbles:true}));
                 }
 
-                // 2. Fill DOB
+                var btnProceed = document.getElementById('btnProceed');
+                if (btnProceed) {
+                    setTimeout(function() {
+                        btnProceed.click();
+                    }, 400);
+                } else if (typeof __doPostBack === 'function') {
+                    __doPostBack('btnProceed', '');
+                }
+            })();
+        """.trimIndent()
+
+        verificationWebView.evaluateJavascript(script, null)
+    }
+
+    /**
+     * Step 2: Enters Date of Birth, isolates the Google reCAPTCHA widget via CSS,
+     * and listens for captcha completion to click "खोजें" (btnSearch).
+     */
+    private fun handleStep2Captcha() {
+        tvVerificationSubtitle.text = "DOB: $currentDob • Solve Captcha below to continue"
+        verificationProgressBar.visibility = View.GONE
+
+        val script = """
+            (function() {
+                // 1. Fill DOB
                 var dobInput = document.getElementById('txtDOB');
                 if (dobInput) {
                     dobInput.focus();
@@ -224,13 +259,13 @@ class MainActivity : AppCompatActivity() {
                     dobInput.dispatchEvent(new Event('blur', {bubbles:true}));
                 }
 
-                // 3. Set light theme attribute on Google reCAPTCHA
+                // 2. Set light theme attribute on Google reCAPTCHA
                 var gRecaptcha = document.querySelector('.g-recaptcha');
                 if (gRecaptcha) {
                     gRecaptcha.setAttribute('data-theme', 'light');
                 }
 
-                // 4. Viewport meta tag
+                // 3. Viewport meta tag
                 var metaViewport = document.querySelector('meta[name="viewport"]');
                 if (!metaViewport) {
                     metaViewport = document.createElement('meta');
@@ -239,7 +274,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 metaViewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
 
-                // 5. Inject CSS rules (isolates captcha, centers it cleanly)
+                // 4. Inject CSS to isolate captcha box cleanly
                 var styleId = 'customCaptchaStyle';
                 var styleEl = document.getElementById(styleId);
                 if (!styleEl) {
@@ -251,10 +286,10 @@ class MainActivity : AppCompatActivity() {
                     .newlogin-image, .login100-form-title, #btnSearch, .messagealert, #alert_container, #pnlConfliction, #printArea, header, footer, nav, img, h1, h2, h3, h4, h5, h6, span[id*="rfv"], span[id*="lbl"], label, p, a, hr, caption {
                         display: none !important;
                     }
-                    .wrap-input100:has(#txtRollNo), #txtRollNo, #txtDOB, #pnlDOB, .container-login100-form-btn {
+                    .wrap-input100:has(#txtRollNo), #txtRollNo, #pnlDOB, .wrap-input100:has(#txtDOB), .container-login100-form-btn {
                         display: none !important;
                     }
-                    .login100-form > div:not(#pnlMain):not(#pnlFinalPanel):not(#pnlCaptcha) {
+                    .login100-form > div:not(#pnlMain):not(#pnlFinalPanel) {
                         display: none !important;
                     }
                     .container-login100::before, .wrap-login100::before, .limiter::before, .login100-form::before {
@@ -266,7 +301,7 @@ class MainActivity : AppCompatActivity() {
                         -webkit-text-size-adjust: 100% !important;
                         background: #F8FAFC !important;
                     }
-                    html, body, form, .limiter, .container-login100, .wrap-login100, .login100-form, #pnlCaptcha {
+                    html, body, form, .limiter, .container-login100, .wrap-login100, .login100-form, #pnlMain, #pnlFinalPanel, #pnlCaptcha {
                         background: #F8FAFC !important;
                         background-color: #F8FAFC !important;
                         background-image: none !important;
@@ -282,8 +317,9 @@ class MainActivity : AppCompatActivity() {
                         display: flex !important;
                         justify-content: center !important;
                         align-items: center !important;
-                        margin: 30px auto !important;
+                        margin: 40px auto !important;
                         padding: 20px 0 !important;
+                        min-height: 100px !important;
                     }
                     .g-recaptcha {
                         display: inline-block !important;
@@ -291,7 +327,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 `;
 
-                // 6. Poller to detect CAPTCHA completion & trigger search
+                // 5. Poller to detect CAPTCHA completion & trigger search
                 if (window.captchaPollerInterval) {
                     clearInterval(window.captchaPollerInterval);
                 }
