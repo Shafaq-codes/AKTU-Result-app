@@ -1,0 +1,9 @@
+<resources>
+    <!-- Base application theme -->
+    <style name="Theme.AKTUResult" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">#721313</item>
+        <item name="colorPrimaryDark">#5b0f0f</item>
+        <item name="colorAccent">#721313</item>
+        <item name="android:windowBackground">#1a202c</item>
+    </style>
+</resources>

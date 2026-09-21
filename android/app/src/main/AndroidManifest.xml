@@ -9,10 +9,10 @@
     <application
         android:allowBackup="true"
         android:icon="@drawable/aktu_logo"
-        android:label="AKTU Result"
+        android:label="@string/app_name"
         android:roundIcon="@drawable/aktu_logo"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.NoTitleBar"
+        android:theme="@style/Theme.AKTUResult"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
