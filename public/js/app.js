@@ -76,8 +76,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const resData = await response.json();
 
-      // If full authentic marksheet is already cached in MongoDB, display immediately
-      if (response.ok && resData.success && resData.source === 'cache' && resData.data && resData.data.sessions && resData.data.sessions.length > 0) {
+      // Check if result actually contains declared subject records
+      let hasDeclaredSubjects = false;
+      if (resData.data && Array.isArray(resData.data.sessions)) {
+        resData.data.sessions.forEach(sess => {
+          if (sess.oddSemester && sess.oddSemester.subjects?.length > 0) hasDeclaredSubjects = true;
+          if (sess.evenSemester && sess.evenSemester.subjects?.length > 0) hasDeclaredSubjects = true;
+          if (sess.semesterList) {
+            sess.semesterList.forEach(sem => {
+              if (sem && sem.subjects?.length > 0) hasDeclaredSubjects = true;
+            });
+          }
+        });
+      }
+
+      // If full authentic marksheet is already verified and has subjects, display immediately
+      if (response.ok && resData.success && hasDeclaredSubjects) {
         localStorage.setItem('aktu_result_cache', JSON.stringify(resData.data));
         localStorage.setItem('last_searched_roll', rollNo);
 

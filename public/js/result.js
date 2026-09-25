@@ -10,8 +10,85 @@ document.addEventListener('DOMContentLoaded', async () => {
   const urlParams = new URLSearchParams(window.location.search);
   const paramRoll = urlParams.get('rollNo') || localStorage.getItem('last_searched_roll');
 
-  // If no cached data or different rollNo requested, fetch from API
-  if ((!resultData || !resultData.studentInfo || (paramRoll && resultData.studentInfo.rollNo !== paramRoll)) && paramRoll) {
+  function mapSemestersToSessions(semesters) {
+    if (!semesters || !Array.isArray(semesters) || semesters.length === 0) return [];
+    const sessionsMap = {};
+    semesters.forEach(s => {
+      const sName = s.session || 'Regular';
+      if (!sessionsMap[sName]) sessionsMap[sName] = [];
+      sessionsMap[sName].push(s);
+    });
+
+    return Object.keys(sessionsMap).map(sessionName => {
+      const sems = sessionsMap[sessionName];
+      let oddSem = sems.find(s => (s.evenOdd && s.evenOdd.toLowerCase().includes('odd')) || (parseInt(s.semester) % 2 !== 0));
+      let evenSem = sems.find(s => (s.evenOdd && s.evenOdd.toLowerCase().includes('even')) || (parseInt(s.semester) % 2 === 0));
+      if (!oddSem && !evenSem && sems.length > 0) {
+        oddSem = sems[0];
+        if (sems.length > 1) evenSem = sems[1];
+      }
+      return {
+        sessionName: sessionName,
+        sessionTitle: sessionName,
+        semText: sems.map(s => s.semester).join(', '),
+        marksText: sems[0]?.resultStatus || 'PASS',
+        copText: 'Audit 1 : Cleared',
+        oddSemester: oddSem ? {
+          semesterId: oddSem.semester,
+          evenOdd: oddSem.evenOdd || 'Odd',
+          totalSubjects: oddSem.totalSubjects || (oddSem.subjects ? oddSem.subjects.length : 0),
+          theorySubjects: oddSem.theorySubjects || 5,
+          practicalSubjects: oddSem.practicalSubjects || 4,
+          totalMarksObtained: oddSem.totalMarksObtained || '',
+          resultStatus: oddSem.resultStatus || '',
+          sgpa: oddSem.sgpa || '',
+          dateOfDeclaration: oddSem.dateOfDeclaration || '',
+          declared: true,
+          subjects: oddSem.subjects || []
+        } : null,
+        evenSemester: evenSem ? {
+          semesterId: evenSem.semester,
+          evenOdd: evenSem.evenOdd || 'Even',
+          totalSubjects: evenSem.totalSubjects || (evenSem.subjects ? evenSem.subjects.length : 0),
+          theorySubjects: evenSem.theorySubjects || 5,
+          practicalSubjects: evenSem.practicalSubjects || 4,
+          totalMarksObtained: evenSem.totalMarksObtained || '',
+          resultStatus: evenSem.resultStatus || '',
+          sgpa: evenSem.sgpa || '',
+          dateOfDeclaration: evenSem.dateOfDeclaration || '',
+          declared: true,
+          subjects: evenSem.subjects || []
+        } : null,
+        semesterList: [oddSem, evenSem].filter(Boolean)
+      };
+    });
+  }
+
+  const countDeclaredSubjects = (data) => {
+    let count = 0;
+    if (data?.sessions && Array.isArray(data.sessions)) {
+      data.sessions.forEach(s => {
+        if (s.oddSemester?.subjects) count += s.oddSemester.subjects.length;
+        if (s.evenSemester?.subjects) count += s.evenSemester.subjects.length;
+        if (s.semesterList) {
+          s.semesterList.forEach(sem => { if (sem?.subjects) count += sem.subjects.length; });
+        }
+      });
+    }
+    return count;
+  };
+
+  if (resultData && (!resultData.sessions || resultData.sessions.length === 0) && resultData.semesters) {
+    resultData.sessions = mapSemestersToSessions(resultData.semesters);
+  }
+
+  // If no cached data, different rollNo, or 0 subjects, fetch from server API
+  const shouldFetchFresh = !resultData || 
+                           !resultData.studentInfo || 
+                           (paramRoll && resultData.studentInfo.rollNo !== paramRoll) ||
+                           countDeclaredSubjects(resultData) === 0;
+
+  if (shouldFetchFresh && paramRoll) {
     try {
       const resp = await fetch('/api/check-result', {
         method: 'POST',
@@ -20,8 +97,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       const json = await resp.json();
       if (json.success && json.data) {
-        resultData = json.data;
-        localStorage.setItem('aktu_result_cache', JSON.stringify(resultData));
+        if (json.data.semesters && (!json.data.sessions || json.data.sessions.length === 0)) {
+          json.data.sessions = mapSemestersToSessions(json.data.semesters);
+        }
+        if (countDeclaredSubjects(json.data) > 0 || !resultData) {
+          resultData = json.data;
+          localStorage.setItem('aktu_result_cache', JSON.stringify(resultData));
+        }
       }
     } catch (e) {
       console.error('Failed to load result:', e);

@@ -16,6 +16,7 @@ import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import org.json.JSONObject
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
@@ -603,6 +604,7 @@ class MainActivity : AppCompatActivity() {
      */
     private fun saveScrapedResultAndShow(jsonPayload: String) {
         Thread {
+            var payloadToInject = jsonPayload
             try {
                 val url = URL("$APP_URL/api/save-result")
                 val conn = url.openConnection() as HttpURLConnection
@@ -617,7 +619,13 @@ class MainActivity : AppCompatActivity() {
                 writer.flush()
                 writer.close()
 
-                val responseCode = conn.responseCode
+                if (conn.responseCode == 200) {
+                    val respText = conn.inputStream.bufferedReader().use { it.readText() }
+                    val respObj = JSONObject(respText)
+                    if (respObj.optBoolean("success") && respObj.has("data")) {
+                        payloadToInject = respObj.getJSONObject("data").toString()
+                    }
+                }
                 conn.disconnect()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -629,7 +637,7 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "Live Marksheet Verified & Saved!", Toast.LENGTH_SHORT).show()
 
                 // Inject directly into localStorage so result.html can render full marksheet immediately
-                val safeJson = jsonPayload
+                val safeJson = payloadToInject
                     .replace("\\", "\\\\")
                     .replace("'", "\\'")
                     .replace("\n", " ")
