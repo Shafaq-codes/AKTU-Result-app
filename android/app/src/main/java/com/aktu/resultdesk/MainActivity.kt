@@ -95,7 +95,8 @@ class MainActivity : AppCompatActivity() {
         settings.setSupportZoom(true)
         settings.builtInZoomControls = true
         settings.displayZoomControls = false
-        settings.cacheMode = WebSettings.LOAD_DEFAULT
+        settings.cacheMode = WebSettings.LOAD_NO_CACHE
+        webView.clearCache(true)
         settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
         // Attach Android Bridge to Main App WebView
