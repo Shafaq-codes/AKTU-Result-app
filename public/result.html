@@ -2,109 +2,109 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>AKTU OneView – Student Marksheet</title>
   <link rel="icon" href="/assets/aktu_logo.png" type="image/png">
   <link rel="stylesheet" href="/css/style.css">
+  <meta name="theme-color" content="#2563eb">
 </head>
 <body class="result-body">
   
-  <div class="container">
+  <div class="container" style="max-width: 900px; padding: 20px;">
     
     <!-- Top Official University Header -->
-    <div class="official-header">
+    <div class="official-header no-print" style="margin-bottom: 22px;">
       <img src="/assets/aktu_logo.png" alt="AKTU Emblem" class="official-logo">
       <div class="official-text">
         <div class="university-title-en">Dr. A.P.J. ABDUL KALAM TECHNICAL UNIVERSITY, UTTAR PRADESH, LUCKNOW</div>
         <div class="university-title-sub">AKTU-One-View Marksheet Examination Portal</div>
       </div>
-      <img src="/assets/aktu_logo.png" alt="AKTU Emblem" class="official-logo" style="visibility: hidden;">
     </div>
 
-    <!-- Student Result Header -->
-    <div class="section-title">Student Result</div>
+    <!-- Modern Profile Card (Friend's App Style) -->
+    <div class="modern-profile-card" id="studentProfileCard">
+      <div class="profile-top-row" id="profileToggleRow">
+        <div class="avatar-circle" id="avatarCircle">
+          <span id="avatarLetter">S</span>
+        </div>
+        <div class="profile-info-col">
+          <h2 class="profile-name-text" id="studentName">--</h2>
+          <div class="roll-pill-badge" id="copyRollBtn" title="Click to copy Roll Number">
+            <span id="studentRoll">--</span>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="profile-chevron-btn" id="profileChevron">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+      </div>
 
-    <!-- Student Personal Info Grid Table -->
-    <table class="student-table" id="studentProfileCard">
-      <tr>
-        <td class="label-cell">Institute Code & Name</td>
-        <td class="colon-cell">:</td>
-        <td id="studentInstitute">--</td>
-        
-        <td class="label-cell">Branch Code & Name</td>
-        <td class="colon-cell">:</td>
-        <td id="studentBranch">--</td>
-        
-        <!-- Print cell -->
-        <td rowspan="5" class="print-btn-cell no-print">
-          <button class="print-btn" id="printBtn" onclick="window.print()">Print One View</button>
-        </td>
-      </tr>
-      <tr>
-        <td class="label-cell">Course Code & Name</td>
-        <td class="colon-cell">:</td>
-        <td id="studentCourse">--</td>
-        
-        <td class="label-cell">EnrollmentNo</td>
-        <td class="colon-cell">:</td>
-        <td id="studentEnroll">--</td>
-      </tr>
-      <tr>
-        <td class="label-cell">RollNo</td>
-        <td class="colon-cell">:</td>
-        <td id="studentRoll">--</td>
-        
-        <td class="label-cell">Hindi Name</td>
-        <td class="colon-cell">:</td>
-        <td id="studentHindiName" style="font-family: Arial, sans-serif;">--</td>
-      </tr>
-      <tr>
-        <td class="label-cell">Name</td>
-        <td class="colon-cell">:</td>
-        <td id="studentName">--</td>
-        
-        <td class="label-cell">Gender</td>
-        <td class="colon-cell">:</td>
-        <td id="studentGender">--</td>
-      </tr>
-      <tr>
-        <td class="label-cell">Father's Name</td>
-        <td class="colon-cell">:</td>
-        <td id="studentFather">--</td>
-        
-        <td colspan="3" style="background-color: #fcfcfc;"></td>
-      </tr>
-    </table>
-
-    <!-- One View Result header -->
-    <div class="section-title">One View Result</div>
-
-    <!-- Grouped Sessions Container -->
-    <div id="sessionsContainer">
-      <!-- Injected dynamically by result.js -->
-    </div>
-
-    <!-- Minor/Major Result header bar -->
-    <div class="session-panel" style="margin-top: 25px;">
-      <div class="session-bar" id="minorResHeader">Minor/Major Result</div>
-      <div class="session-content" id="minorResContent" style="padding: 15px; background-color: #ffffff; border: 1px solid #dddddd; border-top: none;">
-        <table class="marks-grid-table">
-          <tr>
-            <td style="text-align: center; color: #666666;">No Result found.</td>
-          </tr>
-        </table>
+      <!-- Collapsible Profile Details -->
+      <div class="profile-accordion-body" id="profileDetailsExpanded" style="display: none;">
+        <div class="detail-cell">
+          <span>Father's Name</span>
+          <strong id="studentFather">--</strong>
+        </div>
+        <div class="detail-cell">
+          <span>Hindi Name</span>
+          <strong id="studentHindiName">--</strong>
+        </div>
+        <div class="detail-cell">
+          <span>Enrollment No</span>
+          <strong id="studentEnroll">--</strong>
+        </div>
+        <div class="detail-cell">
+          <span>Course</span>
+          <strong id="studentCourse">--</strong>
+        </div>
+        <div class="detail-cell">
+          <span>Branch</span>
+          <strong id="studentBranch">--</strong>
+        </div>
+        <div class="detail-cell">
+          <span>Institute</span>
+          <strong id="studentInstitute">--</strong>
+        </div>
+        <div class="detail-cell">
+          <span>Gender</span>
+          <strong id="studentGender">--</strong>
+        </div>
       </div>
     </div>
 
-    <!-- MOOCs Certifications header bar -->
-    <div class="session-panel" style="margin-top: 15px;">
-      <div class="session-bar" id="moocsHeader">MOOCs Certifications</div>
-      <div class="session-content" id="moocsContent" style="padding: 15px; background-color: #ffffff; border: 1px solid #dddddd; border-top: none;">
-        <table class="marks-grid-table">
-          <tr>
-            <td style="text-align: center; color: #666666;">No Certifications found.</td>
-          </tr>
-        </table>
+    <!-- Modern Semester Selector Dropdown -->
+    <div class="sem-selector-container no-print" id="semSelectorContainer" style="display: none;">
+      <button class="sem-dropdown-btn" id="semDropdownBtn">
+        <span class="sem-cap-icon">🎓</span>
+        <span class="sem-btn-text" id="selectedSemLabel">Semester 4</span>
+        <svg class="sem-chevron-icon" id="semBtnChevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+
+      <!-- Floating Menu -->
+      <div class="sem-dropdown-menu" id="semDropdownMenu">
+        <!-- Injected dynamically by result.js -->
+      </div>
+    </div>
+
+    <!-- Active Semester Marksheet Container -->
+    <div id="activeSemesterMarksheetContainer">
+      <!-- Injected dynamically by result.js -->
+    </div>
+
+    <!-- Minor/Major & MOOCs (Collapsible) -->
+    <div class="session-panel no-print" style="margin-top: 15px; border-radius: 12px; overflow: hidden;">
+      <div class="session-bar" style="background: #f1f5f9; color: #475569; font-weight: 600; font-size: 12px; padding: 10px 16px;">
+        Minor / Major Result & MOOCs
+      </div>
+      <div style="padding: 14px 16px; background: #ffffff; color: #94a3b8; font-size: 12px;">
+        No active minor/major or MOOC certifications found.
       </div>
     </div>
 
@@ -114,13 +114,21 @@
       Designed & Developed by AKTU-SDC Team
     </div>
 
-    <!-- New Search Button -->
-    <div style="text-align: center; margin: 30px 0 50px 0;" class="no-print">
-      <a href="/" class="proceed-btn" style="width: auto; min-width: 180px; display: inline-flex; text-decoration: none;">
-        New Search
+    <!-- Action Buttons -->
+    <div style="text-align: center; margin: 30px 0 50px 0; display: flex; justify-content: center; gap: 14px;" class="no-print">
+      <button onclick="window.print()" class="proceed-btn" style="width: auto; min-width: 150px; background: #1e293b; color: white;">
+        🖨️ Print Result
+      </button>
+      <a href="/" class="proceed-btn" style="width: auto; min-width: 150px; display: inline-flex; text-decoration: none;">
+        🔍 New Search
       </a>
     </div>
 
+  </div>
+
+  <!-- Copy Toast Notification -->
+  <div class="copy-toast" id="copyToast">
+    ✓ Roll Number copied to clipboard!
   </div>
 
   <script src="/js/result.js"></script>

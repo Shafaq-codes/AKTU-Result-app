@@ -117,13 +117,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const { studentInfo, sessions } = resultData;
 
-  // 1. Populate Profile Card Safely
+  // 1. Populate Profile Card
   const setElemText = (id, text) => {
     const el = document.getElementById(id);
     if (el) el.innerText = text || '--';
   };
 
-  setElemText('studentName', studentInfo.name);
+  const nameVal = studentInfo.name || 'Student';
+  setElemText('studentName', nameVal);
   setElemText('studentHindiName', studentInfo.hindiName);
   setElemText('studentRoll', studentInfo.rollNo);
   setElemText('studentEnroll', studentInfo.enrollmentNo);
@@ -133,188 +134,240 @@ document.addEventListener('DOMContentLoaded', async () => {
   setElemText('studentFather', studentInfo.fatherName);
   setElemText('studentGender', studentInfo.gender);
 
-  // 2. Helper to render a single semester column (meta table + subject marks table)
-  const renderSemesterColumn = (sem) => {
-    const s = sem || {
-      semesterId: '',
-      evenOdd: '',
-      totalSubjects: '',
-      theorySubjects: '',
-      practicalSubjects: '',
-      totalMarksObtained: '',
-      resultStatus: '',
-      sgpa: '',
-      dateOfDeclaration: '',
-      declared: false,
-      subjects: []
-    };
+  // Avatar Circle Letter
+  const avatarLetter = document.getElementById('avatarLetter');
+  if (avatarLetter) {
+    avatarLetter.innerText = nameVal.trim().charAt(0).toUpperCase() || 'S';
+  }
 
-    const metaTableHtml = `
-      <table class="meta-table">
-        <tr>
-          <td class="label">Semester</td>
-          <td class="colon">:</td>
-          <td class="value">${s.semesterId || ''}</td>
-          <td class="label">Even/Odd</td>
-          <td class="colon">:</td>
-          <td class="value">${s.evenOdd || ''}</td>
-        </tr>
-        <tr>
-          <td class="label">Total Subjects</td>
-          <td class="colon">:</td>
-          <td class="value">${s.totalSubjects !== undefined ? s.totalSubjects : ''}</td>
-          <td class="label">Theory Subjects</td>
-          <td class="colon">:</td>
-          <td class="value">${s.theorySubjects !== undefined ? s.theorySubjects : ''}</td>
-        </tr>
-        <tr>
-          <td class="label">Practical Subjects</td>
-          <td class="colon">:</td>
-          <td class="value">${s.practicalSubjects !== undefined ? s.practicalSubjects : ''}</td>
-          <td class="label">Total Marks Obt.</td>
-          <td class="colon">:</td>
-          <td class="value">${s.totalMarksObtained !== undefined ? s.totalMarksObtained : ''}</td>
-        </tr>
-        <tr>
-          <td class="label">Result Status</td>
-          <td class="colon">:</td>
-          <td class="value">${s.resultStatus || ''}</td>
-          <td class="label">SGPA</td>
-          <td class="colon">:</td>
-          <td class="value" style="font-weight: bold; color: #721313;">${s.sgpa || ''}</td>
-        </tr>
-        <tr>
-          <td class="label">Date of Declaration</td>
-          <td class="colon">:</td>
-          <td class="value">${s.dateOfDeclaration || ''}</td>
-          <td class="label"></td>
-          <td class="colon"></td>
-          <td class="value"></td>
-        </tr>
-      </table>
-    `;
+  // Accordion Toggle for Student Details
+  const profileToggleRow = document.getElementById('profileToggleRow');
+  const profileDetailsExpanded = document.getElementById('profileDetailsExpanded');
+  const profileChevron = document.getElementById('profileChevron');
+  if (profileToggleRow && profileDetailsExpanded && profileChevron) {
+    profileToggleRow.addEventListener('click', (e) => {
+      // Don't toggle accordion if user clicked copy roll pill
+      if (e.target.closest('#copyRollBtn')) return;
+      const isOpen = profileDetailsExpanded.style.display !== 'none';
+      profileDetailsExpanded.style.display = isOpen ? 'none' : 'grid';
+      profileChevron.classList.toggle('open', !isOpen);
+    });
+  }
+
+  // Copy Roll Number to Clipboard
+  const copyRollBtn = document.getElementById('copyRollBtn');
+  const copyToast = document.getElementById('copyToast');
+  if (copyRollBtn && copyToast) {
+    copyRollBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const rNum = studentInfo.rollNo || '';
+      if (rNum && navigator.clipboard) {
+        navigator.clipboard.writeText(rNum).then(() => {
+          copyToast.style.display = 'block';
+          setTimeout(() => { copyToast.style.display = 'none'; }, 2200);
+        });
+      }
+    });
+  }
+
+  // 2. Extract All Semesters Across All Sessions
+  const allSemesters = [];
+  if (sessions && Array.isArray(sessions)) {
+    sessions.forEach(sess => {
+      const sessName = sess.sessionName || sess.sessionTitle || 'Regular';
+      if (sess.oddSemester && (sess.oddSemester.subjects?.length > 0 || sess.oddSemester.sgpa)) {
+        allSemesters.push({ ...sess.oddSemester, sessionName: sessName });
+      }
+      if (sess.evenSemester && (sess.evenSemester.subjects?.length > 0 || sess.evenSemester.sgpa)) {
+        allSemesters.push({ ...sess.evenSemester, sessionName: sessName });
+      }
+      if (sess.semesterList) {
+        sess.semesterList.forEach(sem => {
+          if (sem && !allSemesters.some(s => String(s.semesterId) === String(sem.semesterId))) {
+            allSemesters.push({ ...sem, sessionName: sessName });
+          }
+        });
+      }
+    });
+  }
+
+  // Sort semesters ascending by numeric semester ID (1, 2, 3, 4...)
+  allSemesters.sort((a, b) => (parseInt(a.semesterId) || 0) - (parseInt(b.semesterId) || 0));
+
+  const semSelectorContainer = document.getElementById('semSelectorContainer');
+  const activeSemesterMarksheetContainer = document.getElementById('activeSemesterMarksheetContainer');
+  const semDropdownBtn = document.getElementById('semDropdownBtn');
+  const selectedSemLabel = document.getElementById('selectedSemLabel');
+  const semDropdownMenu = document.getElementById('semDropdownMenu');
+  const semBtnChevron = document.getElementById('semBtnChevron');
+
+  if (allSemesters.length === 0) {
+    // If no declared semesters yet
+    if (semSelectorContainer) semSelectorContainer.style.display = 'none';
+    if (activeSemesterMarksheetContainer) {
+      activeSemesterMarksheetContainer.innerHTML = `
+        <div class="session-panel" style="padding: 35px 20px; text-align: center; background: #ffffff; border-radius: 18px; border: 1px solid #e2e8f0; margin-top: 15px;">
+          <div style="font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 8px;">
+            ✓ AKTU Official Profile Verified
+          </div>
+          <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 6px;">
+            Candidate identity (Roll No, Name, Enrollment, Branch, Institute) is live verified from AKTU OneView portal.
+          </p>
+          <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0;">
+            Note: Detailed semester examination marksheets and SGPA/CGPA have not been uploaded by the university for this candidate yet.
+          </p>
+        </div>
+      `;
+    }
+    return;
+  }
+
+  // By default, select the LATEST semester (highest semester number)
+  let activeSemester = allSemesters[allSemesters.length - 1];
+
+  // Helper to render the active semester's marksheet card
+  function renderActiveSemesterCard(sem) {
+    selectedSemLabel.innerText = `Semester ${sem.semesterId}`;
+
+    const isPass = !(sem.resultStatus && sem.resultStatus.toUpperCase().includes('FAIL'));
+    const statusText = sem.resultStatus ? sem.resultStatus.trim() : 'PASS';
+    const statusBadgeClass = isPass ? 'status-badge-pass' : 'status-badge-fail';
+    const checkIcon = isPass ? '✓ ' : '✕ ';
 
     let subjectRows = '';
-    if (s.subjects && s.subjects.length > 0) {
-      subjectRows = s.subjects.map(sub => `
-        <tr>
-          <td style="font-weight: 500;">${sub.code || ''}</td>
-          <td class="sub-name" title="${sub.name || ''}">${sub.name || ''}</td>
-          <td style="font-weight: 500;">${sub.internal || '--'}</td>
-          <td style="font-weight: 500;">${sub.external || '--'}</td>
-          <td>${sub.backPaper || '--'}</td>
-          <td style="font-weight: bold; color: ${sub.grade === 'F' ? '#cc0000' : '#1e293b'};">${sub.grade || '--'}</td>
-        </tr>
-      `).join('');
+    if (sem.subjects && sem.subjects.length > 0) {
+      subjectRows = sem.subjects.map(sub => {
+        let gradeColor = '#0f172a';
+        if (sub.grade === 'A+' || sub.grade === 'A') gradeColor = '#15803d';
+        else if (sub.grade === 'F') gradeColor = '#b91c1c';
+        else if (sub.grade === 'D' || sub.grade === 'E') gradeColor = '#d97706';
+
+        return `
+          <tr>
+            <td style="font-weight: 700; color: #475569;">${sub.code || ''}</td>
+            <td style="font-weight: 600; color: #0f172a;">${sub.name || ''}</td>
+            <td style="font-weight: 600; color: #334155;">${sub.internal || '--'}</td>
+            <td style="font-weight: 600; color: #334155;">${sub.external || '--'}</td>
+            <td><span class="grade-badge" style="color: ${gradeColor};">${sub.grade || '--'}</span></td>
+          </tr>
+        `;
+      }).join('');
     } else {
       subjectRows = `
         <tr>
-          <td colspan="6" style="padding: 12px; color: #666666;">No Subject records declared for this semester.</td>
+          <td colspan="5" style="text-align: center; padding: 20px; color: #94a3b8;">
+            No subject marks found for this semester.
+          </td>
         </tr>
       `;
     }
 
-    const marksTableHtml = `
-      <table class="marks-grid-table">
-        <thead>
-          <tr>
-            <th style="width: 75px;">Subject Code</th>
-            <th>Subject Name</th>
-            <th style="width: 60px;">Internal</th>
-            <th style="width: 60px;">External</th>
-            <th style="width: 75px;">Back Paper</th>
-            <th style="width: 50px;">Grade</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${subjectRows}
-        </tbody>
-      </table>
-    `;
-
-    return `
-      <div class="semester-col">
-        ${metaTableHtml}
-        ${marksTableHtml}
-      </div>
-    `;
-  };
-
-  // 3. Render Sessions
-  const sessionsContainer = document.getElementById('sessionsContainer');
-
-  let totalDeclaredSubjects = 0;
-  if (sessions && Array.isArray(sessions)) {
-    sessions.forEach(sess => {
-      if (sess.oddSemester && sess.oddSemester.subjects) totalDeclaredSubjects += sess.oddSemester.subjects.length;
-      if (sess.evenSemester && sess.evenSemester.subjects) totalDeclaredSubjects += sess.evenSemester.subjects.length;
-      if (sess.semesterList) {
-        sess.semesterList.forEach(sem => {
-          if (sem && sem.subjects) totalDeclaredSubjects += sem.subjects.length;
-        });
-      }
-    });
-  }
-
-  if (sessions && Array.isArray(sessions) && sessions.length > 0 && totalDeclaredSubjects > 0) {
-    let sessionsHtml = '';
-
-    sessions.forEach(session => {
-      const sessionTitle = session.sessionName || session.sessionTitle || '';
-      const semText = session.semText || session.semestersText || '';
-      const marksText = session.marksText || '';
-      const copText = session.copText || 'N/A';
-
-      const sessionHeaderBar = `
-        <div class="session-bar">
-          Session : ${sessionTitle} | Semesters : [ ${semText} ] | Marks : [ ${marksText} ] | ${copText}
-        </div>
-      `;
-
-      let odd = session.oddSemester;
-      let even = session.evenSemester;
-      if (!odd && !even && session.semesterList && session.semesterList.length > 0) {
-        odd = session.semesterList[0];
-        if (session.semesterList.length > 1) even = session.semesterList[1];
-      }
-
-      let colsHtml = '';
-      if (odd && (odd.subjects?.length > 0 || odd.semesterId || odd.sgpa)) {
-        colsHtml += renderSemesterColumn(odd);
-      }
-      if (even && (even.subjects?.length > 0 || even.semesterId || even.sgpa)) {
-        colsHtml += renderSemesterColumn(even);
-      }
-      if (!colsHtml && session.semesterList && session.semesterList.length > 0) {
-        session.semesterList.forEach(sem => {
-          if (sem) colsHtml += renderSemesterColumn(sem);
-        });
-      }
-
-      sessionsHtml += `
-        <div class="session-panel">
-          ${sessionHeaderBar}
-          <div class="semesters-container">
-            ${colsHtml || '<div style="padding: 20px; color: #64748b;">No declared subject records found for this session.</div>'}
+    const marksheetHtml = `
+      <div class="modern-marksheet-card">
+        <div class="marksheet-card-top">
+          <h3 class="marksheet-card-title">Semester ${sem.semesterId} Marksheet</h3>
+          <div class="marksheet-badges-group">
+            <span class="${statusBadgeClass}">${checkIcon}${statusText}</span>
+            <span class="sgpa-pill-badge">SGPA: ${sem.sgpa || '--'}</span>
           </div>
         </div>
-      `;
-    });
 
-    sessionsContainer.innerHTML = sessionsHtml;
-  } else {
-    sessionsContainer.innerHTML = `
-      <div class="session-panel" style="padding: 35px 20px; text-align: center; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 15px;">
-        <div style="font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 8px;">
-          ✓ AKTU Official Profile Verified
+        <div class="semester-meta-chips">
+          <div class="meta-chip-item">Total Marks: <strong>${sem.totalMarksObtained || '--'}</strong></div>
+          <div class="meta-chip-item">Subjects: <strong>${sem.subjects ? sem.subjects.length : '--'}</strong></div>
+          <div class="meta-chip-item">Date of Declaration: <strong>${sem.dateOfDeclaration || '--'}</strong></div>
+          <div class="meta-chip-item">Session: <strong>${sem.sessionName || '--'}</strong></div>
         </div>
-        <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 6px;">
-          Candidate identity (Roll No, Name, Enrollment, Branch, Institute) is live verified from AKTU OneView portal.
-        </p>
-        <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0;">
-          Note: Detailed semester examination marksheets and SGPA/CGPA are pending upload by the university for this session (e.g. Admission Batch 2025-26).
-        </p>
+
+        <div class="modern-subject-table-wrap">
+          <table class="modern-subject-table">
+            <thead>
+              <tr>
+                <th style="width: 20%;">CODE</th>
+                <th style="width: 44%;">NAME</th>
+                <th style="width: 12%;">INT</th>
+                <th style="width: 12%;">EXT</th>
+                <th style="width: 12%;">GRADE</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${subjectRows}
+            </tbody>
+          </table>
+        </div>
       </div>
     `;
+
+    activeSemesterMarksheetContainer.innerHTML = marksheetHtml;
   }
+
+  // Populate Dropdown Items
+  function buildDropdownMenu() {
+    semDropdownMenu.innerHTML = allSemesters.map(sem => {
+      const isActive = String(sem.semesterId) === String(activeSemester.semesterId);
+      return `
+        <div class="sem-menu-item ${isActive ? 'active' : ''}" data-sem-id="${sem.semesterId}">
+          <span>Semester ${sem.semesterId}</span>
+          ${isActive ? `
+            <svg class="sem-check-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+
+    // Attach click listener to each menu item
+    semDropdownMenu.querySelectorAll('.sem-menu-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const targetSemId = item.getAttribute('data-sem-id');
+        const chosen = allSemesters.find(s => String(s.semesterId) === String(targetSemId));
+        if (chosen) {
+          activeSemester = chosen;
+          renderActiveSemesterCard(activeSemester);
+          buildDropdownMenu();
+          closeDropdown();
+        }
+      });
+    });
+  }
+
+  function toggleDropdown() {
+    const isShowing = semDropdownMenu.classList.contains('show');
+    if (isShowing) {
+      closeDropdown();
+    } else {
+      openDropdown();
+    }
+  }
+
+  function openDropdown() {
+    semDropdownMenu.classList.add('show');
+    if (semBtnChevron) semBtnChevron.classList.add('open');
+  }
+
+  function closeDropdown() {
+    semDropdownMenu.classList.remove('show');
+    if (semBtnChevron) semBtnChevron.classList.remove('open');
+  }
+
+  // Toggle Dropdown Button
+  if (semDropdownBtn) {
+    semDropdownBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleDropdown();
+    });
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#semSelectorContainer')) {
+      closeDropdown();
+    }
+  });
+
+  // Show selector and render default active semester
+  if (semSelectorContainer) semSelectorContainer.style.display = 'block';
+  buildDropdownMenu();
+  renderActiveSemesterCard(activeSemester);
 });

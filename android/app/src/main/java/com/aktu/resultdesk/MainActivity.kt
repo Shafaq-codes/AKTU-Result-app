@@ -441,18 +441,19 @@ class MainActivity : AppCompatActivity() {
                     gender: gender
                 };
 
-                // Find Session header text (e.g. "Session : 2025-26(REGULAR)...")
-                var pageSession = '';
-                var pageResultStatus = '';
+                // Find all Session header texts on the page (e.g. Session 1, Session 2...)
+                var allSessionBars = [];
                 var allEls = document.querySelectorAll('div, span, td, p');
                 for (var d = 0; d < allEls.length; d++) {
                     var t = (allEls[d].innerText || allEls[d].textContent || '').trim();
-                    if (t.indexOf('Session :') === 0 || t.indexOf('Session:') === 0) {
-                        var mS = t.match(/Session\s*:\s*([^\s|]+(?:\([^\)]+\))?)/i);
-                        if (mS) pageSession = mS[1];
-                        var mR = t.match(/Result\s*:\s*([^|]+)/i);
-                        if (mR) pageResultStatus = mR[1].trim();
-                        break;
+                    if ((t.indexOf('Session :') === 0 || t.indexOf('Session:') === 0) && t.indexOf('Semesters') !== -1) {
+                        if (!allSessionBars.some(function(b) { return b.raw === t; })) {
+                            var mS = t.match(/Session\s*:\s*([^\s|]+(?:\([^\)]+\))?)/i);
+                            var mR = t.match(/Result\s*:\s*([^|]+)/i);
+                            var sTitle = mS ? mS[1] : '';
+                            var rStatus = mR ? mR[1].trim() : '';
+                            allSessionBars.push({ raw: t, sessionName: sTitle, resultStatus: rStatus });
+                        }
                     }
                 }
 
@@ -482,13 +483,18 @@ class MainActivity : AppCompatActivity() {
 
                 tables.forEach(function(tbl, idx) {
                     var semText = '';
-                    var sessionName = pageSession || '';
                     var sgpa = '';
-                    var status = pageResultStatus || '';
+                    var status = '';
                     var evenOdd = '';
                     var totalMarks = '';
                     var totalSubjects = '';
                     var decDate = '';
+
+                    // Assign corresponding session from session bars (2 tables per session)
+                    var sessionIdx = Math.floor(idx / 2);
+                    var sessionObj = allSessionBars[sessionIdx] || allSessionBars[allSessionBars.length - 1] || null;
+                    var sessionName = sessionObj ? sessionObj.sessionName : (allSessionBars[0] ? allSessionBars[0].sessionName : 'Regular');
+                    status = sessionObj ? sessionObj.resultStatus : (allSessionBars[0] ? allSessionBars[0].resultStatus : 'PASS');
 
                     // Walk up parent tree to find closest container with semester metadata
                     var container = tbl.parentElement;
@@ -499,9 +505,9 @@ class MainActivity : AppCompatActivity() {
                         var statusLabel = container.querySelector('[id*="lblResultStatus" i]');
 
                         if (sLabel && !semText) semText = (sLabel.innerText || sLabel.textContent || '').trim();
-                        if (sessLabel && !sessionName) sessionName = (sessLabel.innerText || sessLabel.textContent || '').trim();
+                        if (sessLabel && sessLabel.innerText.trim()) sessionName = sessLabel.innerText.trim();
                         if (sgpaLabel && !sgpa) sgpa = (sgpaLabel.innerText || sgpaLabel.textContent || '').trim();
-                        if (statusLabel && !status) status = (statusLabel.innerText || statusLabel.textContent || '').trim();
+                        if (statusLabel && statusLabel.innerText.trim()) status = statusLabel.innerText.trim();
 
                         // Try finding meta table values in this container
                         if (!sgpa) sgpa = findMetaVal(container, 'SGPA');
@@ -518,14 +524,19 @@ class MainActivity : AppCompatActivity() {
                     // Index fallback if container walk didn't find all labels
                     if (!sgpa && allSgpa[idx]) sgpa = (allSgpa[idx].innerText || allSgpa[idx].textContent || '').trim();
                     if (!semText && allSemIds[idx]) semText = (allSemIds[idx].innerText || allSemIds[idx].textContent || '').trim();
-                    if (!sessionName && allSessions[idx]) sessionName = (allSessions[idx].innerText || allSessions[idx].textContent || '').trim();
-                    if (!status && allStatuses[idx]) status = (allStatuses[idx].innerText || allStatuses[idx].textContent || '').trim();
+                    if (allSessions[idx] && allSessions[idx].innerText.trim()) sessionName = allSessions[idx].innerText.trim();
+                    if (allStatuses[idx] && allStatuses[idx].innerText.trim()) status = allStatuses[idx].innerText.trim();
 
                     // Extract numbers from SGPA if label contained text like "SGPA: 8.25"
                     if (sgpa && sgpa.toLowerCase().indexOf('sgpa') !== -1) {
                         var m = sgpa.match(/([0-9]+(?:\.[0-9]+)?)/);
                         if (m) sgpa = m[1];
                     }
+
+                    // Ensure clean integer semester number
+                    var semNumMatch = semText.match(/([0-9]+)/);
+                    var finalSemNumber = semNumMatch ? semNumMatch[1] : String(idx + 1);
+                    var calcEvenOdd = (parseInt(finalSemNumber) % 2 === 0) ? 'Even' : 'Odd';
 
                     var subjects = [];
                     var rows = tbl.querySelectorAll('tr');
@@ -548,13 +559,13 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
 
-                    if (subjects.length > 0 || (semText && semText.toLowerCase() !== 'semester')) {
+                    if (subjects.length > 0) {
                         semesters.push({
-                            semester: semText || String(idx + 1),
+                            semester: finalSemNumber,
                             session: sessionName || 'Regular',
-                            evenOdd: evenOdd,
+                            evenOdd: evenOdd || calcEvenOdd,
                             totalMarksObtained: totalMarks,
-                            totalSubjects: totalSubjects,
+                            totalSubjects: totalSubjects || subjects.length,
                             dateOfDeclaration: decDate,
                             sgpa: sgpa,
                             resultStatus: status,
