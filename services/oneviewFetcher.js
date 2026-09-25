@@ -105,11 +105,14 @@ function mapTargetSchemaToOurSchema(targetData) {
 
     return {
       sessionName,
+      sessionTitle: sessionName,
       semText,
+      semestersText: semText,
       marksText,
       copText,
       oddSemester: oddSemesterObj,
-      evenSemester: evenSemesterObj
+      evenSemester: evenSemesterObj,
+      semesterList: [oddSemesterObj, evenSemesterObj].filter(Boolean)
     };
   });
 

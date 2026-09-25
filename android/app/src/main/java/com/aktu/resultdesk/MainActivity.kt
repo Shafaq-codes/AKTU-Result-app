@@ -419,26 +419,47 @@ class MainActivity : AppCompatActivity() {
                     gender: gender
                 };
 
-                var tables = document.querySelectorAll('table[id*="grdViewSubjectMarksheet"]');
+                var tables = document.querySelectorAll('table[id*="grdViewSubjectMarksheet" i], table[id*="SubjectMarksheet" i], table[id*="grdView" i]');
+                var allSgpa = document.querySelectorAll('[id*="lblSGPA" i]');
+                var allSemIds = document.querySelectorAll('[id*="lblSemesterId" i]');
+                var allSessions = document.querySelectorAll('[id*="lblSession" i]');
+                var allStatuses = document.querySelectorAll('[id*="lblResultStatus" i]');
                 var semesters = [];
 
                 tables.forEach(function(tbl, idx) {
-                    var container = tbl.closest('div[id*="pnl"]') || tbl.parentElement;
                     var semText = '';
                     var sessionName = '';
                     var sgpa = '';
                     var status = '';
 
-                    if (container) {
-                        var sLabel = container.querySelector('[id*="lblSemesterId"]');
-                        var sessLabel = container.querySelector('[id*="lblSession"]');
-                        var sgpaLabel = container.querySelector('[id*="lblSGPA"]');
-                        var statusLabel = container.querySelector('[id*="lblResultStatus"]');
+                    // Walk up parent tree to find closest container with semester metadata
+                    var container = tbl;
+                    while (container && container !== document.body) {
+                        if (container.querySelector && (container.querySelector('[id*="lblSGPA" i]') || container.querySelector('[id*="lblSemesterId" i]'))) {
+                            var sLabel = container.querySelector('[id*="lblSemesterId" i]');
+                            var sessLabel = container.querySelector('[id*="lblSession" i]');
+                            var sgpaLabel = container.querySelector('[id*="lblSGPA" i]');
+                            var statusLabel = container.querySelector('[id*="lblResultStatus" i]');
 
-                        if (sLabel) semText = sLabel.innerText.trim();
-                        if (sessLabel) sessionName = sessLabel.innerText.trim();
-                        if (sgpaLabel) sgpa = sgpaLabel.innerText.trim();
-                        if (statusLabel) status = statusLabel.innerText.trim();
+                            if (sLabel) semText = (sLabel.innerText || sLabel.textContent || '').trim();
+                            if (sessLabel) sessionName = (sessLabel.innerText || sessLabel.textContent || '').trim();
+                            if (sgpaLabel) sgpa = (sgpaLabel.innerText || sgpaLabel.textContent || '').trim();
+                            if (statusLabel) status = (statusLabel.innerText || statusLabel.textContent || '').trim();
+                            break;
+                        }
+                        container = container.parentElement;
+                    }
+
+                    // Index fallback if container walk didn't find all labels
+                    if (!sgpa && allSgpa[idx]) sgpa = (allSgpa[idx].innerText || allSgpa[idx].textContent || '').trim();
+                    if (!semText && allSemIds[idx]) semText = (allSemIds[idx].innerText || allSemIds[idx].textContent || '').trim();
+                    if (!sessionName && allSessions[idx]) sessionName = (allSessions[idx].innerText || allSessions[idx].textContent || '').trim();
+                    if (!status && allStatuses[idx]) status = (allStatuses[idx].innerText || allStatuses[idx].textContent || '').trim();
+
+                    // Extract numbers from SGPA if label contained text like "SGPA: 8.25"
+                    if (sgpa && sgpa.toLowerCase().indexOf('sgpa') !== -1) {
+                        var m = sgpa.match(/([0-9]+(?:\.[0-9]+)?)/);
+                        if (m) sgpa = m[1];
                     }
 
                     var subjects = [];
@@ -446,25 +467,31 @@ class MainActivity : AppCompatActivity() {
                     for (var r = 1; r < rows.length; r++) {
                         var cells = rows[r].querySelectorAll('td');
                         if (cells.length >= 6) {
+                            var code = (cells[0].innerText || cells[0].textContent || '').trim();
+                            var sName = (cells[1].innerText || cells[1].textContent || '').trim();
+                            // Skip header row repeats
+                            if (code.toLowerCase() === 'code' || code.toLowerCase() === 'subject code') continue;
                             subjects.push({
-                                code: cells[0].innerText.trim(),
-                                name: cells[1].innerText.trim(),
-                                type: cells[2].innerText.trim(),
-                                internal: cells[3].innerText.trim(),
-                                external: cells[4].innerText.trim(),
-                                backPaper: cells[5].innerText.trim(),
-                                grade: cells.length > 6 ? cells[6].innerText.trim() : '--'
+                                code: code,
+                                name: sName,
+                                type: (cells[2].innerText || cells[2].textContent || '').trim(),
+                                internal: (cells[3].innerText || cells[3].textContent || '').trim(),
+                                external: (cells[4].innerText || cells[4].textContent || '').trim(),
+                                backPaper: (cells[5].innerText || cells[5].textContent || '').trim(),
+                                grade: cells.length > 6 ? (cells[6].innerText || cells[6].textContent || '').trim() : '--'
                             });
                         }
                     }
 
-                    semesters.push({
-                        semester: semText || String(idx + 1),
-                        session: sessionName || 'Regular',
-                        sgpa: sgpa,
-                        resultStatus: status,
-                        subjects: subjects
-                    });
+                    if (subjects.length > 0 || (semText && semText.toLowerCase() !== 'semester')) {
+                        semesters.push({
+                            semester: semText || String(idx + 1),
+                            session: sessionName || 'Regular',
+                            sgpa: sgpa,
+                            resultStatus: status,
+                            subjects: subjects
+                        });
+                    }
                 });
 
                 var payload = {
@@ -532,8 +559,26 @@ class MainActivity : AppCompatActivity() {
                 verificationContainer.visibility = View.GONE
                 verificationWebView.loadUrl("about:blank")
                 Toast.makeText(this, "Live Marksheet Verified & Saved!", Toast.LENGTH_SHORT).show()
-                // Notify Main Webview to load result
-                webView.evaluateJavascript("if (window.onOneViewResultReceived) { window.onOneViewResultReceived('$currentRollNo'); } else { window.location.href = '/result.html?rollNo=$currentRollNo'; }", null)
+
+                // Inject directly into localStorage so result.html can render full marksheet immediately
+                val safeJson = jsonPayload
+                    .replace("\\", "\\\\")
+                    .replace("'", "\\'")
+                    .replace("\n", " ")
+                    .replace("\r", " ")
+
+                val script = """
+                    try {
+                        localStorage.setItem('aktu_result_cache', '$safeJson');
+                        localStorage.setItem('last_searched_roll', '$currentRollNo');
+                    } catch(e) {}
+                    if (window.onOneViewResultReceived) {
+                        window.onOneViewResultReceived('$currentRollNo');
+                    } else {
+                        window.location.href = '/result.html?rollNo=$currentRollNo';
+                    }
+                """.trimIndent()
+                webView.evaluateJavascript(script, null)
             }
         }.start()
     }

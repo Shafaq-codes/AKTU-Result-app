@@ -160,25 +160,60 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 3. Render Sessions
   const sessionsContainer = document.getElementById('sessionsContainer');
-  if (sessions && Array.isArray(sessions) && sessions.length > 0) {
+
+  let totalDeclaredSubjects = 0;
+  if (sessions && Array.isArray(sessions)) {
+    sessions.forEach(sess => {
+      if (sess.oddSemester && sess.oddSemester.subjects) totalDeclaredSubjects += sess.oddSemester.subjects.length;
+      if (sess.evenSemester && sess.evenSemester.subjects) totalDeclaredSubjects += sess.evenSemester.subjects.length;
+      if (sess.semesterList) {
+        sess.semesterList.forEach(sem => {
+          if (sem && sem.subjects) totalDeclaredSubjects += sem.subjects.length;
+        });
+      }
+    });
+  }
+
+  if (sessions && Array.isArray(sessions) && sessions.length > 0 && totalDeclaredSubjects > 0) {
     let sessionsHtml = '';
 
     sessions.forEach(session => {
+      const sessionTitle = session.sessionName || session.sessionTitle || '';
+      const semText = session.semText || session.semestersText || '';
+      const marksText = session.marksText || '';
+      const copText = session.copText || 'N/A';
+
       const sessionHeaderBar = `
         <div class="session-bar">
-          Session : ${session.sessionName || ''} | Semesters : [ ${session.semText || ''} ] | Marks : [ ${session.marksText || ''} ] | ${session.copText || 'N/A'}
+          Session : ${sessionTitle} | Semesters : [ ${semText} ] | Marks : [ ${marksText} ] | ${copText}
         </div>
       `;
 
-      const oddColumnHtml = renderSemesterColumn(session.oddSemester);
-      const evenColumnHtml = renderSemesterColumn(session.evenSemester);
+      let odd = session.oddSemester;
+      let even = session.evenSemester;
+      if (!odd && !even && session.semesterList && session.semesterList.length > 0) {
+        odd = session.semesterList[0];
+        if (session.semesterList.length > 1) even = session.semesterList[1];
+      }
+
+      let colsHtml = '';
+      if (odd && (odd.subjects?.length > 0 || odd.semesterId || odd.sgpa)) {
+        colsHtml += renderSemesterColumn(odd);
+      }
+      if (even && (even.subjects?.length > 0 || even.semesterId || even.sgpa)) {
+        colsHtml += renderSemesterColumn(even);
+      }
+      if (!colsHtml && session.semesterList && session.semesterList.length > 0) {
+        session.semesterList.forEach(sem => {
+          if (sem) colsHtml += renderSemesterColumn(sem);
+        });
+      }
 
       sessionsHtml += `
         <div class="session-panel">
           ${sessionHeaderBar}
           <div class="semesters-container">
-            ${oddColumnHtml}
-            ${evenColumnHtml}
+            ${colsHtml || '<div style="padding: 20px; color: #64748b;">No declared subject records found for this session.</div>'}
           </div>
         </div>
       `;
@@ -187,8 +222,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     sessionsContainer.innerHTML = sessionsHtml;
   } else {
     sessionsContainer.innerHTML = `
-      <div class="session-panel" style="padding: 20px; text-align: center; color: #64748b;">
-        Detailed semester records are pending upload for this candidate.
+      <div class="session-panel" style="padding: 35px 20px; text-align: center; background: #ffffff; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 15px;">
+        <div style="font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 8px;">
+          ✓ AKTU Official Profile Verified
+        </div>
+        <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 6px;">
+          Candidate identity (Roll No, Name, Enrollment, Branch, Institute) is live verified from AKTU OneView portal.
+        </p>
+        <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0;">
+          Note: Detailed semester examination marksheets and SGPA/CGPA are pending upload by the university for this session (e.g. Admission Batch 2025-26).
+        </p>
       </div>
     `;
   }

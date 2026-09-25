@@ -25,31 +25,26 @@ const SemesterSchema = new mongoose.Schema({
 }, { _id: false });
 
 const SessionSchema = new mongoose.Schema({
+  sessionName: { type: String, default: '' },
   sessionTitle: { type: String, default: '' },
+  semText: { type: String, default: '' },
   semestersText: { type: String, default: '' },
   marksText: { type: String, default: '' },
   copText: { type: String, default: '' },
+  oddSemester: { type: mongoose.Schema.Types.Mixed, default: null },
+  evenSemester: { type: mongoose.Schema.Types.Mixed, default: null },
   semesterList: [SemesterSchema]
-}, { _id: false });
+}, { _id: false, strict: false });
 
 const StudentResultSchema = new mongoose.Schema({
   rollNumber: { type: String, required: true, unique: true, index: true },
-  studentInfo: {
-    name: { type: String, default: '--' },
-    hindiName: { type: String, default: '--' },
-    fatherName: { type: String, default: '--' },
-    gender: { type: String, default: '--' },
-    course: { type: String, default: '--' },
-    branch: { type: String, default: '--' },
-    institute: { type: String, default: '--' },
-    enrollmentNo: { type: String, default: '--' },
-    rollNo: { type: String, default: '' }
-  },
+  studentInfo: { type: mongoose.Schema.Types.Mixed, default: {} },
   sessions: [SessionSchema],
   searchCount: { type: Number, default: 1 },
   lastSearchedAt: { type: Date, default: Date.now }
 }, {
-  timestamps: true
+  timestamps: true,
+  strict: false
 });
 
 module.exports = mongoose.models.StudentResult || mongoose.model('StudentResult', StudentResultSchema);
