@@ -208,6 +208,20 @@ app.get('/admin-dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin-dashboard.html'));
 });
 
+// 8.1 Direct APK File Download Handler (Force attachment and correct MIME type)
+app.get(['/downloads/:filename', '/download/apk'], (req, res) => {
+  const fs = require('fs');
+  const filename = req.params.filename || 'aktu-result-app-v1.2.apk';
+  let filePath = path.join(__dirname, 'public', 'downloads', filename);
+  if (!fs.existsSync(filePath)) {
+    filePath = path.join(__dirname, 'public', 'downloads', 'aktu-result-app-v1.2.apk');
+  }
+  res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+  res.setHeader('Content-Disposition', 'attachment; filename="aktu-result-app-v1.2.apk"');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.sendFile(filePath);
+});
+
 // 9. APK Download Landing Route
 app.get('/download', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'download.html'));
