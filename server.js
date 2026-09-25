@@ -78,9 +78,16 @@ app.post('/api/save-result', async (req, res) => {
 
     const saved = await storageService.saveStudentResult(marksheetData);
 
+    // If DOB was provided with the payload (e.g. valid manual DOB), save it for future lookups
+    const roll = marksheetData.studentInfo.rollNo;
+    const dob = req.body.dob || marksheetData.dob;
+    if (dob) {
+      storageService.saveStudentDob(roll, dob, marksheetData.studentInfo.name);
+    }
+
     // Record in Search Log as live OneView scraped
     await storageService.logSearch({
-      rollNo: marksheetData.studentInfo.rollNo,
+      rollNo: roll,
       status: 'Success (Live OneView Scraped)',
       studentName: marksheetData.studentInfo.name || '',
       college: marksheetData.studentInfo.institute || ''
@@ -89,6 +96,48 @@ app.post('/api/save-result', async (req, res) => {
     res.json({ success: true, data: saved });
   } catch (err) {
     console.error('Error saving result:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3.1 Save Verified DOB
+app.post('/api/save-dob', (req, res) => {
+  const { rollNo, dob, name } = req.body || {};
+  if (!rollNo || !dob) {
+    return res.status(400).json({ success: false, error: 'rollNo and dob are required' });
+  }
+  const saved = storageService.saveStudentDob(rollNo, dob, name);
+  res.json({ success: saved });
+});
+
+// 3.2 Log Wrong DOB Attempt
+app.post('/api/log-wrong-dob', async (req, res) => {
+  try {
+    const { rollNo, attemptedDob } = req.body || {};
+    if (!rollNo || !attemptedDob) {
+      return res.status(400).json({ success: false, error: 'rollNo and attemptedDob are required' });
+    }
+    const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
+    await storageService.logWrongDobAttempt({
+      rollNumber: rollNo,
+      attemptedDob,
+      ip,
+      source: 'App User'
+    });
+    res.json({ success: true, message: 'Wrong DOB attempt logged' });
+  } catch (err) {
+    console.error('Error logging wrong DOB:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3.3 Admin List of Wrong DOB Attempts
+app.get('/api/admin/wrong-dob', requireAdmin, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 100;
+    const attempts = await storageService.getWrongDobAttempts(limit);
+    res.json({ success: true, attempts });
+  } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });

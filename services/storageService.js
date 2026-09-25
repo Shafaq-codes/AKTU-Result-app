@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const StudentResult = require('../models/StudentResult');
 const SearchLog = require('../models/SearchLog');
+const WrongDobAttempt = require('../models/WrongDobAttempt');
 const { getStatus } = require('../config/db');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
@@ -12,6 +13,7 @@ if (!fs.existsSync(DATA_DIR)) {
 const RESULTS_FILE = path.join(DATA_DIR, 'results_cache.json');
 const LOGS_FILE = path.join(DATA_DIR, 'query_logs.json');
 const DOB_FILE = path.join(DATA_DIR, 'students_dob.json');
+const WRONG_DOB_FILE = path.join(DATA_DIR, 'wrong_dob_attempts.json');
 
 // Helper to read local json
 const readLocal = (filePath, defaultVal = {}) => {
@@ -202,6 +204,90 @@ const getMetrics = async () => {
   return { totalSearches, todaySearches, last60MinsSearches };
 };
 
+// Local wrong DOB attempts
+let localWrongDob = readLocal(WRONG_DOB_FILE, []);
+
+// Save validated student DOB into local file and memory
+const saveStudentDob = (rollNumber, dob, name = '') => {
+  const cleanRoll = (rollNumber || '').trim();
+  const cleanDob = (dob || '').trim();
+  if (!cleanRoll || !cleanDob) return false;
+
+  dobMap[cleanRoll] = {
+    dob: cleanDob,
+    name: (name || '').trim()
+  };
+
+  const list = readLocal(DOB_FILE, []);
+  const existingIdx = list.findIndex(item => (item.rollNumber || '').trim() === cleanRoll);
+  if (existingIdx !== -1) {
+    list[existingIdx].dob = cleanDob;
+    if (name) list[existingIdx].name = name.trim();
+  } else {
+    list.push({
+      rollNumber: cleanRoll,
+      dob: cleanDob,
+      name: (name || '').trim()
+    });
+  }
+  writeLocal(DOB_FILE, list);
+  console.log(`✅ Saved validated DOB for student: ${cleanRoll} (Total: ${list.length})`);
+  return true;
+};
+
+// Log a wrong DOB attempt without saving it as student DOB
+const logWrongDobAttempt = async ({ rollNumber, attemptedDob, ip, source = 'App User' }) => {
+  const cleanRoll = (rollNumber || '').trim();
+  const cleanDob = (attemptedDob || '').trim();
+  if (!cleanRoll || !cleanDob) return null;
+
+  const item = {
+    rollNumber: cleanRoll,
+    attemptedDob: cleanDob,
+    ip: ip || '127.0.0.1',
+    source: source || 'App User',
+    timestamp: new Date()
+  };
+
+  localWrongDob.unshift(item);
+  if (localWrongDob.length > 500) localWrongDob.pop();
+  writeLocal(WRONG_DOB_FILE, localWrongDob);
+
+  // Also log in general search log
+  await logSearch({
+    rollNo: cleanRoll,
+    status: `Failed (Wrong DOB Attempted: ${cleanDob})`,
+    dob: cleanDob,
+    ip: ip || '127.0.0.1'
+  });
+
+  // Save to MongoDB if connected
+  if (getStatus()) {
+    try {
+      const wrongDoc = new WrongDobAttempt(item);
+      await wrongDoc.save();
+    } catch (e) {
+      console.error('MongoDB wrong DOB log error:', e.message);
+    }
+  }
+
+  console.log(`⚠️ Logged Wrong DOB Attempt: Roll ${cleanRoll} -> DOB ${cleanDob}`);
+  return item;
+};
+
+// Retrieve all wrong DOB attempts for reporting
+const getWrongDobAttempts = async (limit = 100) => {
+  if (getStatus()) {
+    try {
+      const docs = await WrongDobAttempt.find().sort({ timestamp: -1 }).limit(limit).lean();
+      if (docs && docs.length > 0) return docs;
+    } catch (e) {
+      console.error('MongoDB get wrong DOB error, falling back to local file:', e.message);
+    }
+  }
+  return localWrongDob.slice(0, limit);
+};
+
 // Clear all query logs
 const clearLogs = async () => {
   localLogs = [];
@@ -218,6 +304,9 @@ const clearLogs = async () => {
 module.exports = {
   getStudentDob,
   findDob: getStudentDob,
+  saveStudentDob,
+  logWrongDobAttempt,
+  getWrongDobAttempts,
   saveStudentResult,
   getStudentResult,
   findStudentResult: getStudentResult,

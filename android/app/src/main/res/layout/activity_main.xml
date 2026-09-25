@@ -88,12 +88,50 @@
             android:indeterminate="true"
             android:visibility="gone" />
 
-        <!-- Verification WebView pointing to https://erp.aktu.ac.in/webpages/oneview/oneview.aspx -->
+        <!-- Verification Loading View (Shown while connecting or after captcha is solved) -->
+        <LinearLayout
+            android:id="@+id/verificationLoadingView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_below="@id/verificationProgressBar"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="32dp"
+            android:background="#F8FAFC">
+
+            <ProgressBar
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:indeterminate="true" />
+
+            <TextView
+                android:id="@+id/tvLoadingStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="Connecting to AKTU Portal..."
+                android:textColor="#0F172A"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvLoadingSubStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:text="Preparing verification check, please wait..."
+                android:textColor="#64748B"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- Verification WebView (Only revealed when reCAPTCHA is ready) -->
         <WebView
             android:id="@+id/verificationWebView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_below="@id/verificationProgressBar" />
+            android:layout_below="@id/verificationProgressBar"
+            android:visibility="gone" />
 
     </RelativeLayout>
 

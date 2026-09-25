@@ -10,15 +10,9 @@
 </head>
 <body class="search-body">
 
-  <div class="search-card">
+  <div class="search-card" id="searchCard">
     <img src="/assets/aktu_logo.png" alt="AKTU Emblem" class="search-logo">
     <h1 class="search-title">AKTU OneView</h1>
-
-    <!-- Auto DOB Match Pill -->
-    <div class="dob-badge" id="dobBadge">
-      <span class="badge-icon">✓</span>
-      <span class="badge-text" id="dobBadgeText">Student Identified</span>
-    </div>
 
     <!-- Roll Input -->
     <div class="input-group">
@@ -44,6 +38,39 @@
     <div class="search-footer-links">
       <a href="/download">📲 Download Android APK</a>
       <a href="/download" style="color: #15803d; font-weight: bold;">v1.1 APK</a>
+    </div>
+  </div>
+
+  <!-- DOB Not Found Modal -->
+  <div class="modal-backdrop" id="dobModalBackdrop" style="display: none;">
+    <div class="dob-modal-card">
+      <div class="dob-modal-icon">📅</div>
+      <h2 class="dob-modal-title">Date of Birth Not Found</h2>
+      <p class="dob-modal-subtitle">
+        इस रोल नंबर का DOB रिकॉर्ड में उपलब्ध नहीं है। कृपया अपना DOB दर्ज करें:
+      </p>
+
+      <div class="input-group" style="margin-top: 15px;">
+        <input 
+          type="text" 
+          id="manualDobInput" 
+          class="roll-input" 
+          placeholder="DD/MM/YYYY (e.g. 15/08/2003)" 
+          maxlength="10"
+          autocomplete="off"
+        >
+      </div>
+
+      <div id="dobErrorMsg" class="dob-error-text" style="display: none;"></div>
+
+      <div class="dob-modal-actions">
+        <button class="proceed-btn" id="submitManualDobBtn" style="margin-top: 10px; width: 100%;">
+          PROCEED & VERIFY
+        </button>
+        <button class="secondary-btn" id="newSearchBtn" style="margin-top: 10px; width: 100%;">
+          🔄 NEW SEARCH
+        </button>
+      </div>
     </div>
   </div>
 

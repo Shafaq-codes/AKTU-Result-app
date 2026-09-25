@@ -3,6 +3,8 @@ package com.aktu.resultdesk
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
 import android.webkit.JavascriptInterface
@@ -11,6 +13,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.RelativeLayout
 import android.widget.TextView
@@ -34,11 +37,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnCancelVerification: TextView
     private lateinit var verificationProgressBar: ProgressBar
     private lateinit var verificationWebView: WebView
+    private lateinit var verificationLoadingView: LinearLayout
+    private lateinit var tvLoadingStatus: TextView
+    private lateinit var tvLoadingSubStatus: TextView
 
     // State
     private var currentRollNo: String = ""
     private var currentDob: String = ""
+    private var isManualDob: Boolean = false
     private var isCaptchaSubmitted: Boolean = false
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var captchaWatchdogRunnable: Runnable? = null
 
     // Backend URL
     private val APP_URL = "https://aktu-result-app.onrender.com"
@@ -61,6 +70,9 @@ class MainActivity : AppCompatActivity() {
         btnCancelVerification = findViewById(R.id.btnCancelVerification)
         verificationProgressBar = findViewById(R.id.verificationProgressBar)
         verificationWebView = findViewById(R.id.verificationWebView)
+        verificationLoadingView = findViewById(R.id.verificationLoadingView)
+        tvLoadingStatus = findViewById(R.id.tvLoadingStatus)
+        tvLoadingSubStatus = findViewById(R.id.tvLoadingSubStatus)
 
         btnCancelVerification.setOnClickListener {
             cancelVerification()
@@ -176,9 +188,52 @@ class MainActivity : AppCompatActivity() {
     private fun handleOneViewPageFinished(url: String) {
         val lowerUrl = url.lowercase()
         if (lowerUrl.contains("ovengine.aspx")) {
-            tvVerificationSubtitle.text = "Official Marksheet Loaded! Extracting records..."
+            captchaWatchdogRunnable?.let { mainHandler.removeCallbacks(it) }
+            tvVerificationTitle.text = "Official Marksheet Loaded"
+            tvVerificationSubtitle.text = "Extracting records, please wait..."
             injectResultScraper()
             return
+        }
+
+        // If captcha was submitted, check if it failed or reloaded with error
+        if (isCaptchaSubmitted) {
+            val checkErrorScript = """
+                (function() {
+                    var alertBox = document.getElementById('alert_container') || document.querySelector('.messagealert');
+                    var alertText = alertBox ? (alertBox.innerText || alertBox.textContent || '').trim() : '';
+
+                    var errorSpans = document.querySelectorAll('span[style*="Red" i], .text-danger, .alert-danger');
+                    var errSpanText = '';
+                    for (var i = 0; i < errorSpans.length; i++) {
+                        var st = (errorSpans[i].innerText || errorSpans[i].textContent || '').trim();
+                        if (st && st !== '*') { errSpanText += ' ' + st; }
+                    }
+
+                    var bodyText = document.body ? (document.body.innerText || '') : '';
+                    var hasWrong = alertText.length > 0 || 
+                                   errSpanText.length > 0 || 
+                                   bodyText.indexOf('Record not found') !== -1 || 
+                                   bodyText.indexOf('Invalid Date of Birth') !== -1 ||
+                                   bodyText.indexOf('Please enter valid Date of Birth') !== -1;
+
+                    return JSON.stringify({
+                        hasError: hasWrong,
+                        message: alertText || errSpanText || 'Invalid Date of Birth or Record Not Found'
+                    });
+                })();
+            """.trimIndent()
+
+            verificationWebView.evaluateJavascript(checkErrorScript) { jsonRes ->
+                try {
+                    val cleanRes = jsonRes?.replace("^\"|\"$".toRegex(), "")?.replace("\\\"", "\"")?.replace("\\\\", "\\") ?: "{}"
+                    val obj = JSONObject(cleanRes)
+                    if (obj.optBoolean("hasError", false)) {
+                        captchaWatchdogRunnable?.let { mainHandler.removeCallbacks(it) }
+                        handleVerificationFailed(obj.optString("message", "Incorrect Date of Birth"))
+                        return@evaluateJavascript
+                    }
+                } catch (e: Exception) {}
+            }
         }
 
         val detectScript = """
@@ -207,10 +262,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Step 1: Enters Roll Number and clicks "आगे बढ़े" (btnProceed).
+     * Step 1: Enters Roll Number and clicks "आगे बढ़े" (btnProceed) completely in the background.
      */
     private fun handleStep1Roll() {
-        tvVerificationSubtitle.text = "Checking Roll No $currentRollNo on AKTU portal..."
+        tvVerificationTitle.text = "Security Verification"
+        tvVerificationSubtitle.text = "Connecting to AKTU server..."
+        verificationLoadingView.visibility = View.VISIBLE
+        verificationWebView.visibility = View.GONE
+        tvLoadingStatus.text = "Checking Records..."
+        tvLoadingSubStatus.text = "Connecting to university portal, please wait..."
         verificationProgressBar.visibility = View.VISIBLE
 
         val script = """
@@ -251,18 +311,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Step 2: Enters Date of Birth, isolates the Google reCAPTCHA widget via CSS,
-     * and listens for captcha completion to click "खोजें" (btnSearch).
+     * Step 2: Enters Date of Birth silently, isolates the Google reCAPTCHA widget via CSS,
+     * reveals ONLY the Captcha box to the user, and triggers search upon captcha completion.
      */
     private fun handleStep2Captcha() {
-        tvVerificationSubtitle.text = "DOB: $currentDob • Solve Captcha below to continue"
+        tvVerificationTitle.text = "Security Verification"
+        tvVerificationSubtitle.text = "Please solve the captcha below to view result"
         verificationProgressBar.visibility = View.GONE
 
         val cleanDob = currentDob.replace("-", "/").trim()
 
         val script = """
             (function() {
-                // 1. Fill DOB (format DD/MM/YYYY)
+                // 1. Fill DOB invisibly (format DD/MM/YYYY)
                 var dobInput = document.getElementById('txtDOB');
                 if (dobInput) {
                     dobInput.focus();
@@ -302,7 +363,7 @@ class MainActivity : AppCompatActivity() {
                     gRecaptcha.setAttribute('data-theme', 'light');
                 }
 
-                // 3. Viewport meta tag
+                // 5. Viewport meta tag
                 var metaViewport = document.querySelector('meta[name="viewport"]');
                 if (!metaViewport) {
                     metaViewport = document.createElement('meta');
@@ -311,7 +372,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 metaViewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no';
 
-                // 4. Inject CSS to isolate captcha box cleanly
+                // 6. Inject CSS to isolate captcha box cleanly without any site text or fields
                 var styleId = 'customCaptchaStyle';
                 var styleEl = document.getElementById(styleId);
                 if (!styleEl) {
@@ -364,7 +425,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 `;
 
-                // 5. Poller to detect CAPTCHA completion & trigger search
+                // 7. Poller to detect CAPTCHA completion & trigger search
                 if (window.captchaPollerInterval) {
                     clearInterval(window.captchaPollerInterval);
                 }
@@ -389,7 +450,15 @@ class MainActivity : AppCompatActivity() {
             })();
         """.trimIndent()
 
-        verificationWebView.evaluateJavascript(script, null)
+        verificationWebView.evaluateJavascript(script) {
+            // Once script executes, reveal only the clean captcha widget
+            verificationWebView.postDelayed({
+                if (!isCaptchaSubmitted) {
+                    verificationLoadingView.visibility = View.GONE
+                    verificationWebView.visibility = View.VISIBLE
+                }
+            }, 300)
+        }
     }
 
     /**
@@ -591,32 +660,92 @@ class MainActivity : AppCompatActivity() {
     /**
      * Starts live verification flow
      */
-    fun startOneView(rollNo: String, dob: String) {
+    fun startOneView(rollNo: String, dob: String, isManual: Boolean = false) {
         currentRollNo = rollNo
         currentDob = dob
+        isManualDob = isManual
         isCaptchaSubmitted = false
+        captchaWatchdogRunnable?.let { mainHandler.removeCallbacks(it) }
 
-        tvVerificationTitle.text = "AKTU OneView: $rollNo"
-        tvVerificationSubtitle.text = "DOB: $dob • Solve Captcha below to continue"
+        tvVerificationTitle.text = "Security Verification"
+        tvVerificationSubtitle.text = "Please solve the captcha to continue"
+
         verificationContainer.visibility = View.VISIBLE
+        verificationLoadingView.visibility = View.VISIBLE
+        verificationWebView.visibility = View.GONE
+        tvLoadingStatus.text = "Connecting to AKTU Portal..."
+        tvLoadingSubStatus.text = "Preparing verification check, please wait..."
         verificationProgressBar.visibility = View.VISIBLE
 
         verificationWebView.loadUrl(ONEVIEW_URL)
     }
 
     private fun cancelVerification() {
+        captchaWatchdogRunnable?.let { mainHandler.removeCallbacks(it) }
+        isCaptchaSubmitted = false
         verificationContainer.visibility = View.GONE
+        verificationLoadingView.visibility = View.GONE
+        verificationWebView.visibility = View.GONE
         verificationWebView.stopLoading()
         verificationWebView.loadUrl("about:blank")
+    }
+
+    /**
+     * Called when AKTU OneView rejects the DOB or verification fails
+     */
+    private fun handleVerificationFailed(errorMsg: String) {
+        runOnUiThread {
+            cancelVerification()
+
+            // Asynchronously log wrong DOB attempt to server
+            val attemptedRoll = currentRollNo
+            val attemptedDob = currentDob
+            Thread {
+                try {
+                    val url = URL("$APP_URL/api/log-wrong-dob")
+                    val conn = url.openConnection() as HttpURLConnection
+                    conn.requestMethod = "POST"
+                    conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                    conn.doOutput = true
+                    val payload = JSONObject().apply {
+                        put("rollNo", attemptedRoll)
+                        put("attemptedDob", attemptedDob)
+                    }
+                    val writer = OutputStreamWriter(conn.outputStream, "UTF-8")
+                    writer.write(payload.toString())
+                    writer.flush()
+                    writer.close()
+                    conn.responseCode
+                    conn.disconnect()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }.start()
+
+            // Notify webView to show DOB not found / wrong DOB modal
+            val safeRoll = attemptedRoll.replace("'", "\\'")
+            val safeDob = attemptedDob.replace("'", "\\'")
+            val safeErr = errorMsg.replace("'", "\\'")
+            val js = "window.onOneViewWrongDob && window.onOneViewWrongDob('$safeRoll', '$safeDob', '$safeErr');"
+            webView.evaluateJavascript(js, null)
+
+            Toast.makeText(this, "Incorrect Date of Birth! Please enter correct DOB.", Toast.LENGTH_LONG).show()
+        }
     }
 
     /**
      * Saves the scraped marksheet directly to MongoDB and renders result
      */
     private fun saveScrapedResultAndShow(jsonPayload: String) {
+        captchaWatchdogRunnable?.let { mainHandler.removeCallbacks(it) }
         Thread {
             var payloadToInject = jsonPayload
             try {
+                // Ensure dob is sent with result payload so valid manual DOB gets saved
+                val payloadObj = JSONObject(jsonPayload)
+                payloadObj.put("dob", currentDob)
+                val payloadStr = payloadObj.toString()
+
                 val url = URL("$APP_URL/api/save-result")
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = "POST"
@@ -626,7 +755,7 @@ class MainActivity : AppCompatActivity() {
                 conn.readTimeout = 15000
 
                 val writer = OutputStreamWriter(conn.outputStream, "UTF-8")
-                writer.write(jsonPayload)
+                writer.write(payloadStr)
                 writer.flush()
                 writer.close()
 
@@ -645,7 +774,7 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 verificationContainer.visibility = View.GONE
                 verificationWebView.loadUrl("about:blank")
-                Toast.makeText(this, "Live Marksheet Verified & Saved!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Marksheet Verified!", Toast.LENGTH_SHORT).show()
 
                 // Inject directly into localStorage so result.html can render full marksheet immediately
                 val safeJson = payloadToInject
@@ -674,7 +803,14 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun startOneViewVerification(rollNo: String, dob: String) {
             runOnUiThread {
-                startOneView(rollNo, dob)
+                startOneView(rollNo, dob, false)
+            }
+        }
+
+        @JavascriptInterface
+        fun startOneViewVerification(rollNo: String, dob: String, isManual: Boolean) {
+            runOnUiThread {
+                startOneView(rollNo, dob, isManual)
             }
         }
 
@@ -682,8 +818,20 @@ class MainActivity : AppCompatActivity() {
         fun onCaptchaSolved() {
             runOnUiThread {
                 isCaptchaSubmitted = true
-                verificationProgressBar.visibility = View.VISIBLE
-                tvVerificationSubtitle.text = "Captcha Verified! Loading Official Marksheet..."
+                verificationWebView.visibility = View.GONE
+                verificationLoadingView.visibility = View.VISIBLE
+                tvLoadingStatus.text = "Captcha Verified!"
+                tvLoadingSubStatus.text = "Loading official marksheet, please wait..."
+                tvVerificationSubtitle.text = "Loading official marksheet..."
+
+                // 20-second timeout watchdog in case DOB is wrong or portal hangs
+                captchaWatchdogRunnable?.let { mainHandler.removeCallbacks(it) }
+                captchaWatchdogRunnable = Runnable {
+                    if (isCaptchaSubmitted && verificationContainer.visibility == View.VISIBLE) {
+                        handleVerificationFailed("Incorrect Date of Birth or verification timed out.")
+                    }
+                }
+                mainHandler.postDelayed(captchaWatchdogRunnable!!, 20000)
             }
         }
 
@@ -705,8 +853,7 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun onOneViewError(errorMessage: String) {
             runOnUiThread {
-                Toast.makeText(this@MainActivity, errorMessage, Toast.LENGTH_LONG).show()
-                verificationProgressBar.visibility = View.GONE
+                handleVerificationFailed(errorMessage)
             }
         }
     }
