@@ -208,14 +208,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       activeSemesterMarksheetContainer.innerHTML = `
         <div class="session-panel" style="padding: 35px 20px; text-align: center; background: #ffffff; border-radius: 18px; border: 1px solid #e2e8f0; margin-top: 15px;">
           <div style="font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 8px;">
-            ✓ AKTU Official Profile Verified
+            ⚠️ विस्तृत अंकपत्र अभी लोड नहीं हुआ है
           </div>
-          <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 6px;">
-            Candidate identity (Roll No, Name, Enrollment, Branch, Institute) is live verified from AKTU OneView portal.
+          <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 15px;">
+            कृपया ऐप के मुख्य पेज से दोबारा सर्च करके कैप्चा सॉल्व करें ताकि AKTU OneView से सभी सेमेस्टर के अंक प्राप्त हो सकें।
           </p>
-          <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0;">
-            Note: Detailed semester examination marksheets and SGPA/CGPA have not been uploaded by the university for this candidate yet.
-          </p>
+          <a href="/" style="display: inline-block; padding: 12px 24px; background: #721313; color: #ffffff; border-radius: 10px; font-weight: 700; text-decoration: none; font-size: 0.95rem; box-shadow: 0 4px 12px rgba(114, 19, 19, 0.25);">
+            🔍 नया सर्च करें (Search Again)
+          </a>
         </div>
       `;
     }

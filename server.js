@@ -131,6 +131,18 @@ app.post('/api/log-wrong-dob', async (req, res) => {
   }
 });
 
+// Admin Auth Middleware
+function requireAdmin(req, res, next) {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.replace('Bearer ', '').trim();
+  const validToken = 'admin_token_' + Buffer.from(ADMIN_PASSWORD).toString('base64');
+  
+  if (token === validToken || req.query.secret === ADMIN_PASSWORD) {
+    return next();
+  }
+  return res.status(401).json({ success: false, error: 'Unauthorized. Admin access required.' });
+}
+
 // 3.3 Admin List of Wrong DOB Attempts
 app.get('/api/admin/wrong-dob', requireAdmin, async (req, res) => {
   try {
@@ -155,18 +167,6 @@ app.post('/api/admin/login', (req, res) => {
   }
   return res.status(401).json({ success: false, error: 'Incorrect Admin Password' });
 });
-
-// Admin Auth Middleware
-const requireAdmin = (req, res, next) => {
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.replace('Bearer ', '').trim();
-  const validToken = 'admin_token_' + Buffer.from(ADMIN_PASSWORD).toString('base64');
-  
-  if (token === validToken || req.query.secret === ADMIN_PASSWORD) {
-    return next();
-  }
-  return res.status(401).json({ success: false, error: 'Unauthorized. Admin access required.' });
-};
 
 // 5. Admin Metrics
 app.get('/api/admin/metrics', requireAdmin, async (req, res) => {

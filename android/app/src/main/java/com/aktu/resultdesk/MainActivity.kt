@@ -809,13 +809,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         @JavascriptInterface
-        fun startOneViewVerification(rollNo: String, dob: String, isManual: Boolean) {
-            runOnUiThread {
-                startOneView(rollNo, dob, isManual)
-            }
-        }
-
-        @JavascriptInterface
         fun onCaptchaSolved() {
             runOnUiThread {
                 isCaptchaSubmitted = true

@@ -106,6 +106,11 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
       }
+      if (resData.data && Array.isArray(resData.data.semesters)) {
+        resData.data.semesters.forEach(sem => {
+          if (sem && sem.subjects?.length > 0) hasDeclaredSubjects = true;
+        });
+      }
 
       // If full authentic marksheet is already verified and has subjects, display immediately
       if (response.ok && resData.success && hasDeclaredSubjects) {
@@ -141,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // IF DOB FOUND: Start verification directly
-      startVerificationWithDob(rollNo, dob, false);
+      startVerificationWithDob(rollNo, dob);
 
     } catch (err) {
       loadingOverlay.style.display = 'none';
@@ -186,8 +191,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dobErrorMsg) dobErrorMsg.style.display = 'none';
     dobModal.style.display = 'none';
 
-    // Start verification with manual DOB flag
-    startVerificationWithDob(activeRollNo, cleanDob, true);
+    // Start verification with manual DOB
+    startVerificationWithDob(activeRollNo, cleanDob);
   }
 
   function showDobError(msg) {
@@ -200,10 +205,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Launch verification in Android Bridge or Web
-  function startVerificationWithDob(rollNo, dob, isManual) {
+  function startVerificationWithDob(rollNo, dob) {
     if (window.AndroidBridge && typeof window.AndroidBridge.startOneViewVerification === 'function') {
       loadingOverlay.style.display = 'none';
-      window.AndroidBridge.startOneViewVerification(rollNo, dob, isManual);
+      window.AndroidBridge.startOneViewVerification(rollNo, dob);
       return;
     }
 
