@@ -173,18 +173,23 @@ class MainActivity : AppCompatActivity() {
      * Step 3: Result marksheet rendered.
      */
     private fun handleOneViewPageFinished(url: String) {
+        val lowerUrl = url.lowercase()
+        if (lowerUrl.contains("ovengine.aspx")) {
+            tvVerificationSubtitle.text = "Official Marksheet Loaded! Extracting records..."
+            injectResultScraper()
+            return
+        }
+
         val detectScript = """
             (function() {
-                var hasResult = document.querySelector('table[id*="grdViewSubjectMarksheet"]') || 
-                                document.getElementById('lblFullName') || 
-                                document.getElementById('lblRollNo');
-                if (hasResult) return 'PAGE_RESULT';
-
                 var hasFinal = document.getElementById('pnlFinalPanel') || document.getElementById('txtDOB') || document.getElementById('pnlCaptcha');
                 if (hasFinal) return 'PAGE_STEP2_CAPTCHA';
 
                 var hasRoll = document.getElementById('txtRollNo') || document.getElementById('btnProceed');
                 if (hasRoll) return 'PAGE_STEP1_ROLL';
+
+                var hasTables = document.querySelector('table[id*="grdViewSubjectMarksheet" i]');
+                if (hasTables) return 'PAGE_RESULT';
 
                 return 'PAGE_UNKNOWN';
             })();
@@ -393,19 +398,35 @@ class MainActivity : AppCompatActivity() {
         val script = """
             (function() {
                 function getText(id) {
-                    var el = document.getElementById(id) || document.querySelector('[id*="' + id + '"]');
+                    var el = document.getElementById(id) || document.querySelector('[id*="' + id + '" i]');
                     return el ? (el.innerText || el.textContent || '').trim() : '';
                 }
 
-                var roll = getText('lblRollNo') || '$currentRollNo';
-                var name = getText('lblFullName') || getText('lblStudentName');
-                var fatherName = getText('lblFatherName');
-                var gender = getText('lblGender');
-                var branch = getText('lblBranch');
-                var institute = getText('lblInstitute');
-                var course = getText('lblCourse') || 'B.Tech';
-                var enrollmentNo = getText('lblEnrollmentNo');
-                var hindiName = getText('lblHindiName');
+                function getFieldByLabel(labelName) {
+                    var cells = document.querySelectorAll('td, span, label, b, strong');
+                    for (var i = 0; i < cells.length; i++) {
+                        var txt = (cells[i].innerText || cells[i].textContent || '').trim();
+                        if (txt.toLowerCase().indexOf(labelName.toLowerCase()) === 0) {
+                            var next = cells[i].nextElementSibling;
+                            while (next) {
+                                var val = (next.innerText || next.textContent || '').replace(/^[:\s]+/, '').trim();
+                                if (val && val !== ':') return val;
+                                next = next.nextElementSibling;
+                            }
+                        }
+                    }
+                    return '';
+                }
+
+                var roll = getText('lblRollNo') || getFieldByLabel('RollNo') || '$currentRollNo';
+                var name = getText('lblFullName') || getText('lblStudentName') || getFieldByLabel('Name');
+                var fatherName = getText('lblFatherName') || getFieldByLabel("Father's Name");
+                var gender = getText('lblGender') || getFieldByLabel('Gender');
+                var branch = getText('lblBranch') || getFieldByLabel('Branch');
+                var institute = getText('lblInstitute') || getFieldByLabel('Institute');
+                var course = getText('lblCourse') || getFieldByLabel('Course') || 'B.Tech';
+                var enrollmentNo = getText('lblEnrollmentNo') || getFieldByLabel('EnrollmentNo');
+                var hindiName = getText('lblHindiName') || getFieldByLabel('Hindi Name');
 
                 var studentInfo = {
                     name: name,
@@ -419,6 +440,21 @@ class MainActivity : AppCompatActivity() {
                     gender: gender
                 };
 
+                // Find Session header text (e.g. "Session : 2025-26(REGULAR)...")
+                var pageSession = '';
+                var pageResultStatus = '';
+                var allEls = document.querySelectorAll('div, span, td, p');
+                for (var d = 0; d < allEls.length; d++) {
+                    var t = (allEls[d].innerText || allEls[d].textContent || '').trim();
+                    if (t.indexOf('Session :') === 0 || t.indexOf('Session:') === 0) {
+                        var mS = t.match(/Session\s*:\s*([^\s|]+(?:\([^\)]+\))?)/i);
+                        if (mS) pageSession = mS[1];
+                        var mR = t.match(/Result\s*:\s*([^|]+)/i);
+                        if (mR) pageResultStatus = mR[1].trim();
+                        break;
+                    }
+                }
+
                 var tables = document.querySelectorAll('table[id*="grdViewSubjectMarksheet" i], table[id*="SubjectMarksheet" i], table[id*="grdView" i]');
                 var allSgpa = document.querySelectorAll('[id*="lblSGPA" i]');
                 var allSemIds = document.querySelectorAll('[id*="lblSemesterId" i]');
@@ -426,27 +462,55 @@ class MainActivity : AppCompatActivity() {
                 var allStatuses = document.querySelectorAll('[id*="lblResultStatus" i]');
                 var semesters = [];
 
+                function findMetaVal(containerEl, key) {
+                    if (!containerEl) return '';
+                    var tds = containerEl.querySelectorAll('td');
+                    for (var i = 0; i < tds.length; i++) {
+                        var txt = (tds[i].innerText || tds[i].textContent || '').trim();
+                        if (txt.toLowerCase().indexOf(key.toLowerCase()) === 0) {
+                            var valTd = tds[i].nextElementSibling;
+                            while (valTd) {
+                                var v = (valTd.innerText || valTd.textContent || '').replace(/^[:\s]+/, '').trim();
+                                if (v && v !== ':') return v;
+                                valTd = valTd.nextElementSibling;
+                            }
+                        }
+                    }
+                    return '';
+                }
+
                 tables.forEach(function(tbl, idx) {
                     var semText = '';
-                    var sessionName = '';
+                    var sessionName = pageSession || '';
                     var sgpa = '';
-                    var status = '';
+                    var status = pageResultStatus || '';
+                    var evenOdd = '';
+                    var totalMarks = '';
+                    var totalSubjects = '';
+                    var decDate = '';
 
                     // Walk up parent tree to find closest container with semester metadata
-                    var container = tbl;
+                    var container = tbl.parentElement;
                     while (container && container !== document.body) {
-                        if (container.querySelector && (container.querySelector('[id*="lblSGPA" i]') || container.querySelector('[id*="lblSemesterId" i]'))) {
-                            var sLabel = container.querySelector('[id*="lblSemesterId" i]');
-                            var sessLabel = container.querySelector('[id*="lblSession" i]');
-                            var sgpaLabel = container.querySelector('[id*="lblSGPA" i]');
-                            var statusLabel = container.querySelector('[id*="lblResultStatus" i]');
+                        var sLabel = container.querySelector('[id*="lblSemesterId" i]');
+                        var sessLabel = container.querySelector('[id*="lblSession" i]');
+                        var sgpaLabel = container.querySelector('[id*="lblSGPA" i]');
+                        var statusLabel = container.querySelector('[id*="lblResultStatus" i]');
 
-                            if (sLabel) semText = (sLabel.innerText || sLabel.textContent || '').trim();
-                            if (sessLabel) sessionName = (sessLabel.innerText || sessLabel.textContent || '').trim();
-                            if (sgpaLabel) sgpa = (sgpaLabel.innerText || sgpaLabel.textContent || '').trim();
-                            if (statusLabel) status = (statusLabel.innerText || statusLabel.textContent || '').trim();
-                            break;
-                        }
+                        if (sLabel && !semText) semText = (sLabel.innerText || sLabel.textContent || '').trim();
+                        if (sessLabel && !sessionName) sessionName = (sessLabel.innerText || sessLabel.textContent || '').trim();
+                        if (sgpaLabel && !sgpa) sgpa = (sgpaLabel.innerText || sgpaLabel.textContent || '').trim();
+                        if (statusLabel && !status) status = (statusLabel.innerText || statusLabel.textContent || '').trim();
+
+                        // Try finding meta table values in this container
+                        if (!sgpa) sgpa = findMetaVal(container, 'SGPA');
+                        if (!semText) semText = findMetaVal(container, 'Semester');
+                        if (!evenOdd) evenOdd = findMetaVal(container, 'Even/Odd');
+                        if (!totalMarks) totalMarks = findMetaVal(container, 'Total Marks');
+                        if (!totalSubjects) totalSubjects = findMetaVal(container, 'Total Subjects');
+                        if (!decDate) decDate = findMetaVal(container, 'Date of Declaration');
+
+                        if (semText || sgpa) break;
                         container = container.parentElement;
                     }
 
@@ -487,6 +551,10 @@ class MainActivity : AppCompatActivity() {
                         semesters.push({
                             semester: semText || String(idx + 1),
                             session: sessionName || 'Regular',
+                            evenOdd: evenOdd,
+                            totalMarksObtained: totalMarks,
+                            totalSubjects: totalSubjects,
+                            dateOfDeclaration: decDate,
                             sgpa: sgpa,
                             resultStatus: status,
                             subjects: subjects

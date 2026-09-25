@@ -29,10 +29,10 @@ function buildSemesterObj(sem) {
     totalSubjects: (sem.subjects || []).length,
     theorySubjects: (sem.subjects || []).filter(sub => (sub.type || 'Theory').toLowerCase() === 'theory').length,
     practicalSubjects: (sem.subjects || []).filter(sub => (sub.type || '').toLowerCase() === 'practical').length,
-    totalMarksObtained: sem.totalMarksObt || '',
+    totalMarksObtained: sem.totalMarksObtained || sem.totalMarksObt || '',
     resultStatus: sem.resultStatus || '',
     sgpa: sem.sgpa || '',
-    dateOfDeclaration: sem.declarationDate || '',
+    dateOfDeclaration: sem.dateOfDeclaration || sem.declarationDate || '',
     declared: true,
     subjects: (sem.subjects || []).map(sub => ({
       code: sub.code || '',
