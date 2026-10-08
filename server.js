@@ -248,4 +248,15 @@ app.listen(PORT, () => {
   console.log(` Admin Panel: http://localhost:${PORT}/admin (Password: ${ADMIN_PASSWORD})`);
   console.log(` Download Landing: http://localhost:${PORT}/download`);
   console.log(`=========================================`);
+
+  // Keep-Alive Self Ping for Render (every 10 minutes)
+  const https = require('https');
+  const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL || 'https://aktu-result-app.onrender.com';
+  setInterval(() => {
+    try {
+      https.get(`${RENDER_EXTERNAL_URL}/api/health`, (res) => {
+        // Keeps the instance warm
+      }).on('error', () => {});
+    } catch (e) {}
+  }, 10 * 60 * 1000);
 });
