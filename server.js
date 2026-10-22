@@ -25,12 +25,20 @@ function isAndroidAppRequest(req) {
          req.query.app === 'android';
 }
 
-// Redirect web visitors from / and /index.html to /download
-app.get(['/', '/index.html'], (req, res, next) => {
+// Root URL: Serve download page directly to web visitors, and app UI to Android APK
+app.get('/', (req, res) => {
   if (isAndroidAppRequest(req)) {
     return res.sendFile(path.join(__dirname, 'public', 'index.html'));
   }
-  return res.redirect(302, '/download');
+  return res.sendFile(path.join(__dirname, 'public', 'download.html'));
+});
+
+// Redirect /index.html to /
+app.get('/index.html', (req, res) => {
+  if (isAndroidAppRequest(req)) {
+    return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
+  return res.redirect(301, '/');
 });
 
 // Serve static frontend files (disable auto-serving index.html on /)
@@ -240,9 +248,9 @@ app.get(['/downloads/:filename', '/download/apk'], (req, res) => {
   res.sendFile(filePath);
 });
 
-// 9. APK Download Landing Route
+// 9. APK Download Landing Route (Redirect /download to /)
 app.get('/download', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'download.html'));
+  return res.redirect(301, '/');
 });
 
 // 10. Health check
@@ -254,12 +262,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Fallback: index.html for app, redirect to /download for web
+// Fallback: index.html for app, download.html for web
 app.get('*', (req, res) => {
   if (isAndroidAppRequest(req)) {
     return res.sendFile(path.join(__dirname, 'public', 'index.html'));
   }
-  return res.redirect(302, '/download');
+  return res.sendFile(path.join(__dirname, 'public', 'download.html'));
 });
 
 // Start Server

@@ -13,7 +13,7 @@
       var isWebView = /;\s*wv\b|Version\/4\.0.*Chrome/i.test(navigator.userAgent);
       var isAppParam = window.location.search.indexOf('app=android') !== -1;
       if (!isAndroidApp && !isWebView && !isAppParam) {
-        window.location.replace('/download');
+        window.location.replace('/');
       }
     })();
   </script>
