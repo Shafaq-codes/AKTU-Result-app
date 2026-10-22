@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Download AKTU Result App | Android APK v1.2</title>
   <link rel="icon" href="/assets/aktu_logo.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * {
       box-sizing: border-box;
@@ -13,8 +16,8 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(circle at 20% 20%, #1e293b 0%, #0b0f17 100%);
       color: #f8fafc;
       min-height: 100vh;
       display: flex;
@@ -26,9 +29,11 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 20px 40px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
+      padding: 16px 40px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(11, 15, 23, 0.7);
+      backdrop-filter: blur(12px);
+      flex-shrink: 0;
     }
 
     .nav-brand {
@@ -40,21 +45,23 @@
     }
 
     .nav-logo {
-      width: 40px;
-      height: 40px;
+      width: 38px;
+      height: 38px;
       object-fit: contain;
     }
 
     .nav-title {
       font-size: 18px;
       font-weight: 700;
+      letter-spacing: -0.3px;
     }
 
     /* Hero Section */
     .hero-container {
-      max-width: 1100px;
+      max-width: 1120px;
+      width: 100%;
       margin: 0 auto;
-      padding: 60px 20px 40px 20px;
+      padding: 20px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -68,8 +75,8 @@
     }
 
     .hero-heading {
-      font-size: 42px;
-      line-height: 1.2;
+      font-size: clamp(32px, 3.2vw, 44px);
+      line-height: 1.15;
       font-weight: 800;
       color: #ffffff;
       margin-bottom: 16px;
@@ -83,10 +90,10 @@
     }
 
     .hero-desc {
-      font-size: 16px;
+      font-size: clamp(14px, 1.2vw, 16px);
       line-height: 1.6;
       color: #94a3b8;
-      margin-bottom: 35px;
+      margin-bottom: 28px;
     }
 
     /* Download Button */
@@ -96,18 +103,18 @@
       gap: 12px;
       background: linear-gradient(135deg, #10b981 0%, #059669 100%);
       color: #ffffff;
-      padding: 16px 32px;
+      padding: 15px 30px;
       border-radius: 12px;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
       text-decoration: none;
-      box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
-      transition: all 0.25s ease;
+      box-shadow: 0 10px 25px rgba(16, 185, 129, 0.35);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .download-btn:hover {
       transform: translateY(-2px);
-      box-shadow: 0 15px 30px rgba(16, 185, 129, 0.5);
+      box-shadow: 0 14px 28px rgba(16, 185, 129, 0.45);
       background: linear-gradient(135deg, #059669 0%, #047857 100%);
     }
 
@@ -116,15 +123,14 @@
       flex: 1;
       display: flex;
       justify-content: center;
+      align-items: center;
     }
 
     .phone-frame {
-      width: 290px;
-      height: 560px;
       background: #000000;
-      border: 10px solid #334155;
-      border-radius: 40px;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1);
+      border: 9px solid #334155;
+      border-radius: 38px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
       position: relative;
       overflow: hidden;
       display: flex;
@@ -132,15 +138,15 @@
     }
 
     .phone-notch {
-      width: 120px;
-      height: 18px;
+      width: 110px;
+      height: 16px;
       background: #334155;
       position: absolute;
       top: 0;
       left: 50%;
       transform: translateX(-50%);
-      border-bottom-left-radius: 12px;
-      border-bottom-right-radius: 12px;
+      border-bottom-left-radius: 10px;
+      border-bottom-right-radius: 10px;
       z-index: 10;
     }
 
@@ -157,7 +163,7 @@
 
     .mini-card {
       background: #ffffff;
-      padding: 25px 15px;
+      padding: 22px 14px;
       border-radius: 10px;
       width: 100%;
       text-align: center;
@@ -165,25 +171,25 @@
     }
 
     .mini-logo {
-      width: 48px;
-      height: 48px;
+      width: 44px;
+      height: 44px;
       margin-bottom: 8px;
     }
 
     .mini-title {
-      font-size: 15px;
-      font-weight: bold;
+      font-size: 14px;
+      font-weight: 700;
       color: #721313;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     .mini-input {
       width: 100%;
-      padding: 8px;
+      padding: 7px 8px;
       border: 1px solid #cbd5e1;
       border-radius: 4px;
       font-size: 11px;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       text-align: center;
     }
 
@@ -196,22 +202,66 @@
       border-radius: 4px;
       font-size: 11px;
       font-weight: bold;
+      cursor: pointer;
     }
 
+    /* Desktop Viewport Rules (No scrolling on Desktop) */
+    @media (min-width: 851px) {
+      html, body {
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .landing-nav {
+        padding: 16px 48px;
+      }
+
+      .hero-container {
+        padding: 20px 48px;
+        height: calc(100vh - 72px);
+        max-height: calc(100vh - 72px);
+        overflow: hidden;
+      }
+
+      .phone-frame {
+        height: min(510px, calc(100vh - 160px));
+        width: calc(min(510px, calc(100vh - 160px)) * 0.52);
+        max-width: 275px;
+      }
+    }
+
+    /* Mobile / Tablet Viewport Rules (Scrollable on mobile) */
     @media (max-width: 850px) {
+      html, body {
+        min-height: 100vh;
+        height: auto;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      .landing-nav {
+        padding: 14px 20px;
+      }
+
       .hero-container {
         flex-direction: column;
         text-align: center;
-        padding-top: 30px;
+        padding: 30px 20px 50px 20px;
+        gap: 36px;
       }
+
       .hero-content {
         max-width: 100%;
       }
-      .landing-nav {
-        padding: 15px 20px;
-      }
+
       .hero-heading {
-        font-size: 32px;
+        font-size: 30px;
+      }
+
+      .phone-frame {
+        width: 260px;
+        height: 480px;
+        margin: 0 auto;
       }
     }
   </style>
