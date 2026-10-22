@@ -3,6 +3,7 @@ const path = require('path');
 const StudentResult = require('../models/StudentResult');
 const SearchLog = require('../models/SearchLog');
 const WrongDobAttempt = require('../models/WrongDobAttempt');
+const StudentDob = require('../models/StudentDob');
 const { getStatus } = require('../config/db');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
@@ -61,10 +62,42 @@ const loadDobMap = () => {
 };
 loadDobMap();
 
-// Get DOB for a roll number
-const getStudentDob = (rollNumber) => {
+// Get DOB for a roll number (checks memory, studentsDb, and MongoDB)
+const getStudentDob = async (rollNumber) => {
   const cleanRoll = (rollNumber || '').trim();
-  return dobMap[cleanRoll] || null;
+  if (!cleanRoll) return null;
+
+  // 1. Check in-memory map
+  if (dobMap[cleanRoll]) return dobMap[cleanRoll];
+
+  // 2. Check students_db.json
+  if (studentsDb[cleanRoll] && studentsDb[cleanRoll].dob) {
+    dobMap[cleanRoll] = {
+      dob: String(studentsDb[cleanRoll].dob).trim(),
+      name: studentsDb[cleanRoll].studentInfo?.name || '',
+      verified: true
+    };
+    return dobMap[cleanRoll];
+  }
+
+  // 3. Check MongoDB
+  if (getStatus()) {
+    try {
+      const doc = await StudentDob.findOne({ rollNumber: cleanRoll }).lean();
+      if (doc && doc.dob) {
+        dobMap[cleanRoll] = {
+          dob: doc.dob.trim(),
+          name: doc.name || '',
+          verified: doc.verified || false
+        };
+        return dobMap[cleanRoll];
+      }
+    } catch (e) {
+      console.error('MongoDB find DOB error:', e.message);
+    }
+  }
+
+  return null;
 };
 
 // Save student result to MongoDB and local JSON
@@ -211,15 +244,16 @@ const getMetrics = async () => {
 // Local wrong DOB attempts
 let localWrongDob = readLocal(WRONG_DOB_FILE, []);
 
-// Save validated student DOB into local file and memory
-const saveStudentDob = (rollNumber, dob, name = '') => {
+// Save student DOB into local file, memory, and MongoDB
+const saveStudentDob = async (rollNumber, dob, name = '', verified = false, source = 'manual_input') => {
   const cleanRoll = (rollNumber || '').trim();
   const cleanDob = (dob || '').trim();
   if (!cleanRoll || !cleanDob) return false;
 
   dobMap[cleanRoll] = {
     dob: cleanDob,
-    name: (name || '').trim()
+    name: (name || '').trim(),
+    verified
   };
 
   const list = readLocal(DOB_FILE, []);
@@ -227,15 +261,38 @@ const saveStudentDob = (rollNumber, dob, name = '') => {
   if (existingIdx !== -1) {
     list[existingIdx].dob = cleanDob;
     if (name) list[existingIdx].name = name.trim();
+    list[existingIdx].verified = verified;
   } else {
     list.push({
       rollNumber: cleanRoll,
       dob: cleanDob,
-      name: (name || '').trim()
+      name: (name || '').trim(),
+      verified
     });
   }
   writeLocal(DOB_FILE, list);
-  console.log(`✅ Saved validated DOB for student: ${cleanRoll} (Total: ${list.length})`);
+
+  // Save to MongoDB if connected
+  if (getStatus()) {
+    try {
+      await StudentDob.findOneAndUpdate(
+        { rollNumber: cleanRoll },
+        { 
+          rollNumber: cleanRoll, 
+          dob: cleanDob, 
+          name: (name || '').trim(),
+          verified,
+          source,
+          lastUpdated: new Date()
+        },
+        { upsert: true, new: true }
+      );
+    } catch (mongoErr) {
+      console.error('MongoDB StudentDob Save Error:', mongoErr.message);
+    }
+  }
+
+  console.log(`✅ Saved DOB for student: ${cleanRoll} -> ${cleanDob} (verified: ${verified}, source: ${source})`);
   return true;
 };
 

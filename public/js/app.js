@@ -191,6 +191,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dobErrorMsg) dobErrorMsg.style.display = 'none';
     dobModal.style.display = 'none';
 
+    // Immediately save user-entered DOB into database & MongoDB
+    try {
+      fetch('/api/save-dob', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rollNo: activeRollNo,
+          dob: cleanDob,
+          source: 'User Manual Entry'
+        })
+      }).catch(err => console.warn('DOB auto-save note:', err));
+    } catch (e) {}
+
     // Start verification with manual DOB
     startVerificationWithDob(activeRollNo, cleanDob);
   }

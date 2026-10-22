@@ -78,9 +78,9 @@ app.post('/api/check-result', async (req, res) => {
 });
 
 // 2. Lookup Date of Birth for a Roll Number
-app.get('/api/dob/:rollNo', (req, res) => {
+app.get('/api/dob/:rollNo', async (req, res) => {
   const rollNo = req.params.rollNo;
-  const match = storageService.findDob(rollNo);
+  const match = await storageService.findDob(rollNo);
   if (match) {
     res.json({ success: true, ...match });
   } else {
@@ -108,7 +108,7 @@ app.post('/api/save-result', async (req, res) => {
     const roll = marksheetData.studentInfo.rollNo;
     const dob = req.body.dob || marksheetData.dob;
     if (dob) {
-      storageService.saveStudentDob(roll, dob, marksheetData.studentInfo.name);
+      await storageService.saveStudentDob(roll, dob, marksheetData.studentInfo.name, true, 'verified_scraper');
     }
 
     // Record in Search Log as live OneView scraped
@@ -126,14 +126,18 @@ app.post('/api/save-result', async (req, res) => {
   }
 });
 
-// 3.1 Save Verified DOB
-app.post('/api/save-dob', (req, res) => {
-  const { rollNo, dob, name } = req.body || {};
-  if (!rollNo || !dob) {
-    return res.status(400).json({ success: false, error: 'rollNo and dob are required' });
+// 3.1 Save Verified / Manual DOB
+app.post('/api/save-dob', async (req, res) => {
+  try {
+    const { rollNo, dob, name, source } = req.body || {};
+    if (!rollNo || !dob) {
+      return res.status(400).json({ success: false, error: 'rollNo and dob are required' });
+    }
+    const saved = await storageService.saveStudentDob(rollNo, dob, name, false, source || 'manual_entry');
+    res.json({ success: !!saved });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
-  const saved = storageService.saveStudentDob(rollNo, dob, name);
-  res.json({ success: saved });
 });
 
 // 3.2 Log Wrong DOB Attempt
