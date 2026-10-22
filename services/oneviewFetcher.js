@@ -37,6 +37,7 @@ function buildSemesterObj(sem) {
     subjects: (sem.subjects || []).map(sub => ({
       code: sub.code || '',
       name: sub.name || '',
+      type: sub.type || '',
       internal: sub.internal !== undefined ? String(sub.internal) : '',
       external: sub.external !== undefined ? String(sub.external) : '',
       backPaper: sub.backPaper || '--',

@@ -10,6 +10,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const urlParams = new URLSearchParams(window.location.search);
   const paramRoll = urlParams.get('rollNo') || localStorage.getItem('last_searched_roll');
 
+  function parseSemNumber(val) {
+    if (!val) return 1;
+    const s = String(val).replace(/[^0-9]/g, '');
+    const num = parseInt(s, 10);
+    return isNaN(num) ? 1 : num;
+  }
+
   function mapSemestersToSessions(semesters) {
     if (!semesters || !Array.isArray(semesters) || semesters.length === 0) return [];
     const sessionsMap = {};
@@ -21,42 +28,62 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     return Object.keys(sessionsMap).map(sessionName => {
       const sems = sessionsMap[sessionName];
-      let oddSem = sems.find(s => (s.evenOdd && s.evenOdd.toLowerCase().includes('odd')) || (parseInt(s.semester) % 2 !== 0));
-      let evenSem = sems.find(s => (s.evenOdd && s.evenOdd.toLowerCase().includes('even')) || (parseInt(s.semester) % 2 === 0));
+      let oddSem = sems.find(s => (s.evenOdd && s.evenOdd.toLowerCase().includes('odd')) || (parseSemNumber(s.semester) % 2 !== 0));
+      let evenSem = sems.find(s => (s.evenOdd && s.evenOdd.toLowerCase().includes('even')) || (parseSemNumber(s.semester) % 2 === 0));
       if (!oddSem && !evenSem && sems.length > 0) {
         oddSem = sems[0];
         if (sems.length > 1) evenSem = sems[1];
       }
+
+      // Calculate COP codes
+      const cops = [];
+      sems.forEach(s => {
+        (s.subjects || []).forEach(sub => {
+          if (sub.grade === 'F' && sub.code && !cops.includes(sub.code)) {
+            cops.push(sub.code);
+          }
+        });
+      });
+      const copText = cops.length > 0 ? `COP : ${cops.join(',')}` : '';
+
+      // Marks total
+      let totalMarksObt = 0;
+      let totalMax = 0;
+      sems.forEach(s => {
+        const m = parseInt(s.totalMarksObtained || s.totalMarksObt || 0, 10);
+        if (!isNaN(m) && m > 0) totalMarksObt += m;
+        totalMax += (s.subjects ? s.subjects.length * 100 : 900);
+      });
+      const marksText = totalMarksObt > 0 ? `${totalMarksObt}/${totalMax}` : (sems[0]?.resultStatus || 'PASS');
+
       return {
         sessionName: sessionName,
         sessionTitle: sessionName,
-        semText: sems.map(s => s.semester).join(', '),
-        marksText: sems[0]?.resultStatus || 'PASS',
-        copText: 'Audit 1 : Cleared',
+        semText: sems.map(s => s.semester).join(','),
+        marksText: marksText,
+        copText: copText,
         oddSemester: oddSem ? {
           semesterId: oddSem.semester,
           evenOdd: oddSem.evenOdd || 'Odd',
           totalSubjects: oddSem.totalSubjects || (oddSem.subjects ? oddSem.subjects.length : 0),
-          theorySubjects: oddSem.theorySubjects || 5,
-          practicalSubjects: oddSem.practicalSubjects || 4,
-          totalMarksObtained: oddSem.totalMarksObtained || '',
-          resultStatus: oddSem.resultStatus || '',
+          theorySubjects: oddSem.theorySubjects || (oddSem.subjects ? oddSem.subjects.filter(x => (x.type || 'Theory').toLowerCase() === 'theory').length : 5),
+          practicalSubjects: oddSem.practicalSubjects || (oddSem.subjects ? oddSem.subjects.filter(x => (x.type || '').toLowerCase() === 'practical').length : 4),
+          totalMarksObtained: oddSem.totalMarksObtained || oddSem.totalMarksObt || '',
+          resultStatus: oddSem.resultStatus || 'PASS',
           sgpa: oddSem.sgpa || '',
           dateOfDeclaration: oddSem.dateOfDeclaration || '',
-          declared: true,
           subjects: oddSem.subjects || []
         } : null,
         evenSemester: evenSem ? {
           semesterId: evenSem.semester,
           evenOdd: evenSem.evenOdd || 'Even',
           totalSubjects: evenSem.totalSubjects || (evenSem.subjects ? evenSem.subjects.length : 0),
-          theorySubjects: evenSem.theorySubjects || 5,
-          practicalSubjects: evenSem.practicalSubjects || 4,
-          totalMarksObtained: evenSem.totalMarksObtained || '',
-          resultStatus: evenSem.resultStatus || '',
+          theorySubjects: evenSem.theorySubjects || (evenSem.subjects ? evenSem.subjects.filter(x => (x.type || 'Theory').toLowerCase() === 'theory').length : 5),
+          practicalSubjects: evenSem.practicalSubjects || (evenSem.subjects ? evenSem.subjects.filter(x => (x.type || '').toLowerCase() === 'practical').length : 4),
+          totalMarksObtained: evenSem.totalMarksObtained || evenSem.totalMarksObt || '',
+          resultStatus: evenSem.resultStatus || 'PASS',
           sgpa: evenSem.sgpa || '',
           dateOfDeclaration: evenSem.dateOfDeclaration || '',
-          declared: true,
           subjects: evenSem.subjects || []
         } : null,
         semesterList: [oddSem, evenSem].filter(Boolean)
@@ -82,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     resultData.sessions = mapSemestersToSessions(resultData.semesters);
   }
 
-  // If no cached data, different rollNo, or 0 subjects, fetch from server API
+  // Fetch fresh if no cache, different roll, or empty subjects
   const shouldFetchFresh = !resultData || 
                            !resultData.studentInfo || 
                            (paramRoll && resultData.studentInfo.rollNo !== paramRoll) ||
@@ -117,257 +144,284 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const { studentInfo, sessions } = resultData;
 
-  // 1. Populate Profile Card
-  const setElemText = (id, text) => {
+  // 1. Fill 4-Column Student Information Table
+  const setElem = (id, val) => {
     const el = document.getElementById(id);
-    if (el) el.innerText = text || '--';
+    if (el) el.innerText = val ? String(val).trim() : '--';
   };
 
-  const nameVal = studentInfo.name || 'Student';
-  setElemText('studentName', nameVal);
-  setElemText('studentHindiName', studentInfo.hindiName);
-  setElemText('studentRoll', studentInfo.rollNo);
-  setElemText('studentEnroll', studentInfo.enrollmentNo);
-  setElemText('studentCourse', studentInfo.course);
-  setElemText('studentBranch', studentInfo.branch);
-  setElemText('studentInstitute', studentInfo.institute);
-  setElemText('studentFather', studentInfo.fatherName);
-  setElemText('studentGender', studentInfo.gender);
+  setElem('studentInstitute', studentInfo.institute);
+  setElem('studentBranch', studentInfo.branch);
+  setElem('studentCourse', studentInfo.course);
+  setElem('studentEnroll', studentInfo.enrollmentNo);
+  setElem('studentRoll', studentInfo.rollNo);
+  setElem('studentHindiName', studentInfo.hindiName);
+  setElem('studentName', studentInfo.name);
+  setElem('studentGender', studentInfo.gender);
+  setElem('studentFather', studentInfo.fatherName);
 
-  // Avatar Circle Letter
-  const avatarLetter = document.getElementById('avatarLetter');
-  if (avatarLetter) {
-    avatarLetter.innerText = nameVal.trim().charAt(0).toUpperCase() || 'S';
-  }
+  // 2. Render Authentic AKTU OneView Sessions
+  const sessionsContainer = document.getElementById('sessionsContainer');
+  if (!sessionsContainer) return;
 
-  // Accordion Toggle for Student Details
-  const profileToggleRow = document.getElementById('profileToggleRow');
-  const profileDetailsExpanded = document.getElementById('profileDetailsExpanded');
-  const profileChevron = document.getElementById('profileChevron');
-  if (profileToggleRow && profileDetailsExpanded && profileChevron) {
-    profileToggleRow.addEventListener('click', (e) => {
-      // Don't toggle accordion if user clicked copy roll pill
-      if (e.target.closest('#copyRollBtn')) return;
-      const isOpen = profileDetailsExpanded.style.display !== 'none';
-      profileDetailsExpanded.style.display = isOpen ? 'none' : 'grid';
-      profileChevron.classList.toggle('open', !isOpen);
-    });
-  }
-
-  // Copy Roll Number to Clipboard
-  const copyRollBtn = document.getElementById('copyRollBtn');
-  const copyToast = document.getElementById('copyToast');
-  if (copyRollBtn && copyToast) {
-    copyRollBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const rNum = studentInfo.rollNo || '';
-      if (rNum && navigator.clipboard) {
-        navigator.clipboard.writeText(rNum).then(() => {
-          copyToast.style.display = 'block';
-          setTimeout(() => { copyToast.style.display = 'none'; }, 2200);
-        });
-      }
-    });
-  }
-
-  // 2. Extract All Semesters Across All Sessions
-  const allSemesters = [];
-  if (sessions && Array.isArray(sessions)) {
-    sessions.forEach(sess => {
-      const sessName = sess.sessionName || sess.sessionTitle || 'Regular';
-      if (sess.oddSemester && (sess.oddSemester.subjects?.length > 0 || sess.oddSemester.sgpa)) {
-        allSemesters.push({ ...sess.oddSemester, sessionName: sessName });
-      }
-      if (sess.evenSemester && (sess.evenSemester.subjects?.length > 0 || sess.evenSemester.sgpa)) {
-        allSemesters.push({ ...sess.evenSemester, sessionName: sessName });
-      }
-      if (sess.semesterList) {
-        sess.semesterList.forEach(sem => {
-          if (sem && !allSemesters.some(s => String(s.semesterId) === String(sem.semesterId))) {
-            allSemesters.push({ ...sem, sessionName: sessName });
-          }
-        });
-      }
-    });
-  }
-
-  // Sort semesters ascending by numeric semester ID (1, 2, 3, 4...)
-  allSemesters.sort((a, b) => (parseInt(a.semesterId) || 0) - (parseInt(b.semesterId) || 0));
-
-  const semSelectorContainer = document.getElementById('semSelectorContainer');
-  const activeSemesterMarksheetContainer = document.getElementById('activeSemesterMarksheetContainer');
-  const semDropdownBtn = document.getElementById('semDropdownBtn');
-  const selectedSemLabel = document.getElementById('selectedSemLabel');
-  const semDropdownMenu = document.getElementById('semDropdownMenu');
-  const semBtnChevron = document.getElementById('semBtnChevron');
-
-  if (allSemesters.length === 0) {
-    // If no declared semesters yet
-    if (semSelectorContainer) semSelectorContainer.style.display = 'none';
-    if (activeSemesterMarksheetContainer) {
-      activeSemesterMarksheetContainer.innerHTML = `
-        <div class="session-panel" style="padding: 35px 20px; text-align: center; background: #ffffff; border-radius: 18px; border: 1px solid #e2e8f0; margin-top: 15px;">
-          <div style="font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 8px;">
-            ⚠️ विस्तृत अंकपत्र अभी लोड नहीं हुआ है
-          </div>
-          <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 15px;">
-            कृपया ऐप के मुख्य पेज से दोबारा सर्च करके कैप्चा सॉल्व करें ताकि AKTU OneView से सभी सेमेस्टर के अंक प्राप्त हो सकें।
-          </p>
-          <a href="/" style="display: inline-block; padding: 12px 24px; background: #721313; color: #ffffff; border-radius: 10px; font-weight: 700; text-decoration: none; font-size: 0.95rem; box-shadow: 0 4px 12px rgba(114, 19, 19, 0.25);">
-            🔍 नया सर्च करें (Search Again)
-          </a>
+  if (!sessions || sessions.length === 0) {
+    sessionsContainer.innerHTML = `
+      <div style="border: 1px solid #c8ced3; background: #ffffff; padding: 30px 15px; text-align: center; margin-bottom: 20px;">
+        <div style="font-weight: bold; font-size: 14px; color: #721313; margin-bottom: 8px;">
+          ⚠️ No Examination Sessions Found
         </div>
-      `;
-    }
+        <p style="color: #666; font-size: 11px;">
+          Detailed semester marksheet records have not been uploaded by the university for this roll number yet.
+        </p>
+      </div>
+    `;
     return;
   }
 
-  // By default, select the LATEST semester (highest semester number)
-  let activeSemester = allSemesters[allSemesters.length - 1];
+  let htmlBuffer = '';
 
-  // Helper to render the active semester's marksheet card
-  function renderActiveSemesterCard(sem) {
-    selectedSemLabel.innerText = `Semester ${sem.semesterId}`;
-
-    const isPass = !(sem.resultStatus && sem.resultStatus.toUpperCase().includes('FAIL'));
-    const statusText = sem.resultStatus ? sem.resultStatus.trim() : 'PASS';
-    const statusBadgeClass = isPass ? 'status-badge-pass' : 'status-badge-fail';
-    const checkIcon = isPass ? '✓ ' : '✕ ';
-
-    let subjectRows = '';
-    if (sem.subjects && sem.subjects.length > 0) {
-      subjectRows = sem.subjects.map(sub => {
-        let gradeColor = '#0f172a';
-        if (sub.grade === 'A+' || sub.grade === 'A') gradeColor = '#15803d';
-        else if (sub.grade === 'F') gradeColor = '#b91c1c';
-        else if (sub.grade === 'D' || sub.grade === 'E') gradeColor = '#d97706';
-
-        return `
-          <tr>
-            <td style="font-weight: 700; color: #475569;">${sub.code || ''}</td>
-            <td style="font-weight: 600; color: #0f172a;">${sub.name || ''}</td>
-            <td style="font-weight: 600; color: #334155;">${sub.internal || '--'}</td>
-            <td style="font-weight: 600; color: #334155;">${sub.external || '--'}</td>
-            <td><span class="grade-badge" style="color: ${gradeColor};">${sub.grade || '--'}</span></td>
-          </tr>
-        `;
-      }).join('');
-    } else {
-      subjectRows = `
-        <tr>
-          <td colspan="5" style="text-align: center; padding: 20px; color: #94a3b8;">
-            No subject marks found for this semester.
-          </td>
-        </tr>
-      `;
+  sessions.forEach((sess, sessIdx) => {
+    const sessName = sess.sessionName || sess.sessionTitle || 'REGULAR';
+    
+    // Extract semesters belonging to this session
+    const semList = [];
+    if (sess.oddSemester && (sess.oddSemester.subjects?.length > 0 || sess.oddSemester.semesterId)) {
+      semList.push(sess.oddSemester);
+    }
+    if (sess.evenSemester && (sess.evenSemester.subjects?.length > 0 || sess.evenSemester.semesterId)) {
+      semList.push(sess.evenSemester);
+    }
+    if (sess.semesterList) {
+      sess.semesterList.forEach(s => {
+        if (s && !semList.some(item => String(item.semesterId) === String(s.semesterId))) {
+          semList.push(s);
+        }
+      });
     }
 
-    const marksheetHtml = `
-      <div class="modern-marksheet-card">
-        <div class="marksheet-card-top">
-          <h3 class="marksheet-card-title">Semester ${sem.semesterId} Marksheet</h3>
-          <div class="marksheet-badges-group">
-            <span class="${statusBadgeClass}">${checkIcon}${statusText}</span>
-            <span class="sgpa-pill-badge">SGPA: ${sem.sgpa || '--'}</span>
-          </div>
-        </div>
+    // Sort by semester number ascending (1, 2, 3...)
+    semList.sort((a, b) => parseSemNumber(a.semesterId) - parseSemNumber(b.semesterId));
 
-        <div class="semester-meta-chips">
-          <div class="meta-chip-item">Total Marks: <strong>${sem.totalMarksObtained || '--'}</strong></div>
-          <div class="meta-chip-item">Subjects: <strong>${sem.subjects ? sem.subjects.length : '--'}</strong></div>
-          <div class="meta-chip-item">Date of Declaration: <strong>${sem.dateOfDeclaration || '--'}</strong></div>
-          <div class="meta-chip-item">Session: <strong>${sem.sessionName || '--'}</strong></div>
-        </div>
+    // Semester numbers text (e.g. 1,2)
+    const semNumbersText = sess.semText || semList.map(s => s.semesterId).join(',');
 
-        <div class="modern-subject-table-wrap">
-          <table class="modern-subject-table">
-            <thead>
-              <tr>
-                <th style="width: 20%;">CODE</th>
-                <th style="width: 44%;">NAME</th>
-                <th style="width: 12%;">INT</th>
-                <th style="width: 12%;">EXT</th>
-                <th style="width: 12%;">GRADE</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${subjectRows}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    `;
-
-    activeSemesterMarksheetContainer.innerHTML = marksheetHtml;
-  }
-
-  // Populate Dropdown Items
-  function buildDropdownMenu() {
-    semDropdownMenu.innerHTML = allSemesters.map(sem => {
-      const isActive = String(sem.semesterId) === String(activeSemester.semesterId);
-      return `
-        <div class="sem-menu-item ${isActive ? 'active' : ''}" data-sem-id="${sem.semesterId}">
-          <span>Semester ${sem.semesterId}</span>
-          ${isActive ? `
-            <svg class="sem-check-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-          ` : ''}
-        </div>
-      `;
-    }).join('');
-
-    // Attach click listener to each menu item
-    semDropdownMenu.querySelectorAll('.sem-menu-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const targetSemId = item.getAttribute('data-sem-id');
-        const chosen = allSemesters.find(s => String(s.semesterId) === String(targetSemId));
-        if (chosen) {
-          activeSemester = chosen;
-          renderActiveSemesterCard(activeSemester);
-          buildDropdownMenu();
-          closeDropdown();
+    // Calculate or retrieve COP codes
+    let copList = [];
+    if (sess.copText && sess.copText.includes(':')) {
+      const parts = sess.copText.split(':');
+      if (parts[1] && parts[1].trim() && parts[1].trim() !== 'N/A' && !parts[1].includes('Cleared')) {
+        copList = parts[1].split(',').map(c => c.trim()).filter(Boolean);
+      }
+    }
+    
+    // Check if any subject in this session has grade 'F'
+    semList.forEach(sem => {
+      (sem.subjects || []).forEach(sub => {
+        if (sub.grade === 'F' && sub.code && !copList.includes(sub.code)) {
+          copList.push(sub.code);
         }
       });
     });
-  }
 
-  function toggleDropdown() {
-    const isShowing = semDropdownMenu.classList.contains('show');
-    if (isShowing) {
-      closeDropdown();
-    } else {
-      openDropdown();
+    // Marks text calculation
+    let marksDisplay = sess.marksText || '';
+    if (!marksDisplay || marksDisplay === 'PASS' || marksDisplay === 'PCP') {
+      let obt = 0;
+      let maxM = 0;
+      semList.forEach(sem => {
+        const o = parseInt(sem.totalMarksObtained || 0, 10);
+        if (!isNaN(o) && o > 0) obt += o;
+        maxM += (sem.subjects ? sem.subjects.length * 100 : 900);
+      });
+      if (obt > 0) {
+        marksDisplay = `${obt}/${maxM}`;
+      } else {
+        marksDisplay = semList[0]?.resultStatus || 'PASS';
+      }
     }
-  }
 
-  function openDropdown() {
-    semDropdownMenu.classList.add('show');
-    if (semBtnChevron) semBtnChevron.classList.add('open');
-  }
+    const copLineHtml = copList.length > 0 
+      ? `<div class="session-cop-line">COP : ${copList.join(',')}</div>` 
+      : (sess.copText && !sess.copText.includes('Audit') && sess.copText !== 'N/A' && !sess.copText.includes('N/A') ? `<div class="session-cop-line">${sess.copText}</div>` : '');
 
-  function closeDropdown() {
-    semDropdownMenu.classList.remove('show');
-    if (semBtnChevron) semBtnChevron.classList.remove('open');
-  }
+    // By default, expand all sessions (as shown in official AKTU OneView mobile view)
+    const isExpanded = true;
 
-  // Toggle Dropdown Button
-  if (semDropdownBtn) {
-    semDropdownBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      toggleDropdown();
+    // Build Semesters HTML inside this session
+    let semsHtml = '';
+    semList.forEach(sem => {
+      const semNum = sem.semesterId || '1';
+      const isOdd = (sem.evenOdd && sem.evenOdd.toLowerCase().includes('odd')) || (parseSemNumber(semNum) % 2 !== 0);
+      const evenOddText = sem.evenOdd || (isOdd ? 'Odd' : 'Even');
+      const totalSubs = sem.totalSubjects || (sem.subjects ? sem.subjects.length : 0);
+      const theorySubs = sem.theorySubjects || (sem.subjects ? sem.subjects.filter(s => (s.type || 'Theory').toLowerCase() === 'theory').length : 5);
+      const practSubs = sem.practicalSubjects || (sem.subjects ? sem.subjects.filter(s => (s.type || '').toLowerCase() === 'practical').length : 4);
+      const marksObt = sem.totalMarksObtained || '--';
+      const status = sem.resultStatus || 'PASS';
+      const sgpa = sem.sgpa || '--';
+      const decDate = sem.dateOfDeclaration || '--';
+
+      // Build 7-column Subject Rows
+      let rowsHtml = '';
+      if (sem.subjects && sem.subjects.length > 0) {
+        sem.subjects.forEach(sub => {
+          const code = sub.code || '';
+          const name = sub.name || '';
+          const type = sub.type || 'Theory';
+          const internal = (sub.internal !== undefined && sub.internal !== null && String(sub.internal).trim() !== '') ? sub.internal : '--';
+          const external = (sub.external !== undefined && sub.external !== null && String(sub.external).trim() !== '') ? sub.external : '--';
+          const backPaper = (sub.backPaper && String(sub.backPaper).trim() !== '') ? sub.backPaper : '--';
+          const grade = (sub.grade && String(sub.grade).trim() !== '') ? sub.grade : '--';
+
+          // Styling logic:
+          // 1. Red row if grade is F (Back Paper Failed)
+          // 2. Light blue row if type is CA / Audit (Sports and Yoga, NSS, etc.)
+          // 3. Normal white row for regular or cleared back papers
+          let rowClass = '';
+          const isCA = type.toLowerCase() === 'ca' || 
+                       code.toUpperCase().startsWith('BVA') || 
+                       name.toLowerCase().includes('sports') || 
+                       name.toLowerCase().includes('yoga') || 
+                       name.toLowerCase().includes('nss');
+
+          const isFailed = grade === 'F' || grade === 'CP' || (String(external) !== '--' && parseInt(external) < 15 && type.toLowerCase() === 'theory');
+
+          if (isFailed) {
+            rowClass = 'row-back-failed';
+          } else if (isCA) {
+            rowClass = 'row-audit-ca';
+          }
+
+          rowsHtml += `
+            <tr class="${rowClass}">
+              <td>${code}</td>
+              <td class="text-left-name">${name}</td>
+              <td>${type}</td>
+              <td>${internal}</td>
+              <td>${isCA ? '' : external}</td>
+              <td>${backPaper}</td>
+              <td>${isCA ? '' : grade}</td>
+            </tr>
+          `;
+        });
+      } else {
+        rowsHtml = `
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 15px; color: #888;">
+              No subject records declared for this semester.
+            </td>
+          </tr>
+        `;
+      }
+
+      semsHtml += `
+        <div class="semester-single-block">
+          <!-- 2-Column Semester Metadata Table -->
+          <table class="sem-meta-table">
+            <tbody>
+              <tr>
+                <td class="m-col-key">Semester</td>
+                <td class="m-col-val">: ${semNum}</td>
+                <td class="m-col-key">Even/Odd</td>
+                <td class="m-col-val">: ${evenOddText}</td>
+              </tr>
+              <tr>
+                <td class="m-col-key">Total Subjects</td>
+                <td class="m-col-val">: ${totalSubs}</td>
+                <td class="m-col-key">Theory Subjects</td>
+                <td class="m-col-val">: ${theorySubs}</td>
+              </tr>
+              <tr>
+                <td class="m-col-key">Practical Subjects</td>
+                <td class="m-col-val">: ${practSubs}</td>
+                <td class="m-col-key">Total Marks Obt.</td>
+                <td class="m-col-val">: ${marksObt}</td>
+              </tr>
+              <tr>
+                <td class="m-col-key">Result Status</td>
+                <td class="m-col-val">: ${status}</td>
+                <td class="m-col-key">SGPA</td>
+                <td class="m-col-val">: ${sgpa}</td>
+              </tr>
+              <tr>
+                <td class="m-col-key">Date of Declaration</td>
+                <td class="m-col-val">: ${decDate}</td>
+                <td class="m-col-key"></td>
+                <td class="m-col-val"></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- 7-Column Subject Marksheet Table -->
+          <div class="marks-table-responsive-wrapper">
+            <table class="aktu-official-marks-table">
+              <thead>
+                <tr>
+                  <th style="width: 14%;">Code</th>
+                  <th style="width: 38%;">Name</th>
+                  <th style="width: 10%;">Type</th>
+                  <th style="width: 9%;">Internal</th>
+                  <th style="width: 9%;">External</th>
+                  <th style="width: 10%;">Back Paper</th>
+                  <th style="width: 10%;">Grade</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
     });
-  }
 
-  // Close dropdown when clicking outside
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('#semSelectorContainer')) {
-      closeDropdown();
-    }
+    htmlBuffer += `
+      <div class="session-wrapper-card">
+        <!-- Collapsible Pink / Peach Session Strip -->
+        <div class="session-pink-bar" onclick="toggleSession('sess-${sessIdx}')">
+          <div class="session-bar-top-row">
+            <span>Session : ${sessName}</span>
+            <span>Semesters : ${semNumbersText}</span>
+            <span>Marks : ${marksDisplay}</span>
+            <span class="session-arrow-icon" id="arrow-sess-${sessIdx}">▲</span>
+          </div>
+          ${copLineHtml}
+        </div>
+
+        <!-- Session Content Container -->
+        <div class="session-body-container" id="sess-${sessIdx}" style="display: block;">
+          ${semsHtml}
+        </div>
+      </div>
+    `;
   });
 
-  // Show selector and render default active semester
-  if (semSelectorContainer) semSelectorContainer.style.display = 'block';
-  buildDropdownMenu();
-  renderActiveSemesterCard(activeSemester);
+  sessionsContainer.innerHTML = htmlBuffer;
+
+  // Collapsible toggle for Sessions
+  window.toggleSession = function(sessId) {
+    const el = document.getElementById(sessId);
+    const arrow = document.getElementById('arrow-' + sessId);
+    if (!el) return;
+    const isHidden = el.style.display === 'none';
+    el.style.display = isHidden ? 'block' : 'none';
+    if (arrow) arrow.innerText = isHidden ? '▲' : '▼';
+  };
+
+  // Static Collapsible Toggles (Minor/Major & MOOCs)
+  const setupToggle = (btnId, contentId, arrowId) => {
+    const btn = document.getElementById(btnId);
+    const content = document.getElementById(contentId);
+    const arrow = document.getElementById(arrowId);
+    if (btn && content) {
+      btn.addEventListener('click', () => {
+        const isHidden = content.style.display === 'none';
+        content.style.display = isHidden ? 'block' : 'none';
+        if (arrow) arrow.innerText = isHidden ? '▲' : '▼';
+      });
+    }
+  };
+
+  setupToggle('minorMajorToggle', 'minorMajorContent', 'minorMajorArrow');
+  setupToggle('moocsToggle', 'moocsContent', 'moocsArrow');
 });
