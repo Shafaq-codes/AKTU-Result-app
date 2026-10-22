@@ -35,16 +35,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (sems.length > 1) evenSem = sems[1];
       }
 
-      // Calculate COP codes
+      // Calculate COP codes (only where grade is F)
       const cops = [];
       sems.forEach(s => {
         (s.subjects || []).forEach(sub => {
-          if (sub.grade === 'F' && sub.code && !cops.includes(sub.code)) {
+          const g = (sub.grade || '').trim().toUpperCase();
+          if ((g === 'F' || g === 'FAIL' || g === 'ABS') && sub.code && !cops.includes(sub.code)) {
             cops.push(sub.code);
           }
         });
       });
-      const copText = cops.length > 0 ? `COP : ${cops.join(',')}` : '';
+      const copText = cops.length > 0 ? `COP: ${cops.join(', ')}` : '';
 
       // Marks total
       let totalMarksObt = 0;
@@ -59,7 +60,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return {
         sessionName: sessionName,
         sessionTitle: sessionName,
-        semText: sems.map(s => s.semester).join(','),
+        semText: sems.map(s => s.semester).join(', '),
         marksText: marksText,
         copText: copText,
         oddSemester: oddSem ? {
@@ -72,6 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           resultStatus: oddSem.resultStatus || 'PASS',
           sgpa: oddSem.sgpa || '',
           dateOfDeclaration: oddSem.dateOfDeclaration || '',
+          declared: true,
           subjects: oddSem.subjects || []
         } : null,
         evenSemester: evenSem ? {
@@ -84,6 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           resultStatus: evenSem.resultStatus || 'PASS',
           sgpa: evenSem.sgpa || '',
           dateOfDeclaration: evenSem.dateOfDeclaration || '',
+          declared: true,
           subjects: evenSem.subjects || []
         } : null,
         semesterList: [oddSem, evenSem].filter(Boolean)
@@ -109,7 +112,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     resultData.sessions = mapSemestersToSessions(resultData.semesters);
   }
 
-  // Fetch fresh if no cache, different roll, or empty subjects
   const shouldFetchFresh = !resultData || 
                            !resultData.studentInfo || 
                            (paramRoll && resultData.studentInfo.rollNo !== paramRoll) ||
@@ -144,284 +146,290 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const { studentInfo, sessions } = resultData;
 
-  // 1. Fill 4-Column Student Information Table
-  const setElem = (id, val) => {
+  // 1. Populate Profile Card
+  const setElemText = (id, text) => {
     const el = document.getElementById(id);
-    if (el) el.innerText = val ? String(val).trim() : '--';
+    if (el) el.innerText = text ? String(text).trim() : '--';
   };
 
-  setElem('studentInstitute', studentInfo.institute);
-  setElem('studentBranch', studentInfo.branch);
-  setElem('studentCourse', studentInfo.course);
-  setElem('studentEnroll', studentInfo.enrollmentNo);
-  setElem('studentRoll', studentInfo.rollNo);
-  setElem('studentHindiName', studentInfo.hindiName);
-  setElem('studentName', studentInfo.name);
-  setElem('studentGender', studentInfo.gender);
-  setElem('studentFather', studentInfo.fatherName);
+  setElemText('studentName', studentInfo.name);
+  setElemText('studentHindiName', studentInfo.hindiName);
+  setElemText('studentRoll', studentInfo.rollNo);
+  setElemText('studentEnroll', studentInfo.enrollmentNo);
+  setElemText('studentCourse', studentInfo.course);
+  setElemText('studentBranch', studentInfo.branch);
+  setElemText('studentInstitute', studentInfo.institute);
+  setElemText('studentFather', studentInfo.fatherName);
+  setElemText('studentGender', studentInfo.gender);
 
-  // 2. Render Authentic AKTU OneView Sessions
-  const sessionsContainer = document.getElementById('sessionsContainer');
-  if (!sessionsContainer) return;
+  // Helper to render a single semester column (meta table + marks-grid-table)
+  const renderSemesterColumn = (sem) => {
+    if (!sem) return '';
 
-  if (!sessions || sessions.length === 0) {
-    sessionsContainer.innerHTML = `
-      <div style="border: 1px solid #c8ced3; background: #ffffff; padding: 30px 15px; text-align: center; margin-bottom: 20px;">
-        <div style="font-weight: bold; font-size: 14px; color: #721313; margin-bottom: 8px;">
-          ⚠️ No Examination Sessions Found
-        </div>
-        <p style="color: #666; font-size: 11px;">
-          Detailed semester marksheet records have not been uploaded by the university for this roll number yet.
-        </p>
-      </div>
+    const s = {
+      semesterId: sem.semesterId || '',
+      evenOdd: sem.evenOdd || '',
+      totalSubjects: sem.totalSubjects !== undefined ? sem.totalSubjects : (sem.subjects ? sem.subjects.length : ''),
+      theorySubjects: sem.theorySubjects !== undefined ? sem.theorySubjects : '',
+      practicalSubjects: sem.practicalSubjects !== undefined ? sem.practicalSubjects : '',
+      totalMarksObtained: sem.totalMarksObtained || sem.totalMarksObt || '',
+      resultStatus: sem.resultStatus || '',
+      sgpa: sem.sgpa || '',
+      dateOfDeclaration: sem.dateOfDeclaration || '',
+      declared: sem.declared !== false,
+      subjects: sem.subjects || []
+    };
+
+    const metaTableHtml = `
+      <table class="meta-table">
+        <tr>
+          <td class="label">Semester</td>
+          <td class="colon">:</td>
+          <td class="value">${s.semesterId}</td>
+          <td class="label">Even/Odd</td>
+          <td class="colon">:</td>
+          <td class="value">${s.evenOdd}</td>
+        </tr>
+        <tr>
+          <td class="label">Total Subjects</td>
+          <td class="colon">:</td>
+          <td class="value">${s.totalSubjects}</td>
+          <td class="label">Theory Subjects</td>
+          <td class="colon">:</td>
+          <td class="value">${s.theorySubjects}</td>
+        </tr>
+        <tr>
+          <td class="label">Practical Subjects</td>
+          <td class="colon">:</td>
+          <td class="value">${s.practicalSubjects}</td>
+          <td class="label">Total Marks Obt.</td>
+          <td class="colon">:</td>
+          <td class="value">${s.totalMarksObtained}</td>
+        </tr>
+        <tr>
+          <td class="label">Result Status</td>
+          <td class="colon">:</td>
+          <td class="value">${s.resultStatus}</td>
+          <td class="label">SGPA</td>
+          <td class="colon">:</td>
+          <td class="value" style="font-weight: bold;">${s.sgpa}</td>
+        </tr>
+        <tr>
+          <td class="label">Date of Declaration</td>
+          <td class="colon">:</td>
+          <td class="value">${s.dateOfDeclaration}</td>
+          <td class="label"></td>
+          <td class="colon"></td>
+          <td class="value"></td>
+        </tr>
+      </table>
     `;
-    return;
-  }
 
-  let htmlBuffer = '';
-
-  sessions.forEach((sess, sessIdx) => {
-    const sessName = sess.sessionName || sess.sessionTitle || 'REGULAR';
-    
-    // Extract semesters belonging to this session
-    const semList = [];
-    if (sess.oddSemester && (sess.oddSemester.subjects?.length > 0 || sess.oddSemester.semesterId)) {
-      semList.push(sess.oddSemester);
-    }
-    if (sess.evenSemester && (sess.evenSemester.subjects?.length > 0 || sess.evenSemester.semesterId)) {
-      semList.push(sess.evenSemester);
-    }
-    if (sess.semesterList) {
-      sess.semesterList.forEach(s => {
-        if (s && !semList.some(item => String(item.semesterId) === String(s.semesterId))) {
-          semList.push(s);
-        }
-      });
-    }
-
-    // Sort by semester number ascending (1, 2, 3...)
-    semList.sort((a, b) => parseSemNumber(a.semesterId) - parseSemNumber(b.semesterId));
-
-    // Semester numbers text (e.g. 1,2)
-    const semNumbersText = sess.semText || semList.map(s => s.semesterId).join(',');
-
-    // Calculate or retrieve COP codes
-    let copList = [];
-    if (sess.copText && sess.copText.includes(':')) {
-      const parts = sess.copText.split(':');
-      if (parts[1] && parts[1].trim() && parts[1].trim() !== 'N/A' && !parts[1].includes('Cleared')) {
-        copList = parts[1].split(',').map(c => c.trim()).filter(Boolean);
-      }
-    }
-    
-    // Check if any subject in this session has grade 'F'
-    semList.forEach(sem => {
-      (sem.subjects || []).forEach(sub => {
-        if (sub.grade === 'F' && sub.code && !copList.includes(sub.code)) {
-          copList.push(sub.code);
-        }
-      });
-    });
-
-    // Marks text calculation
-    let marksDisplay = sess.marksText || '';
-    if (!marksDisplay || marksDisplay === 'PASS' || marksDisplay === 'PCP') {
-      let obt = 0;
-      let maxM = 0;
-      semList.forEach(sem => {
-        const o = parseInt(sem.totalMarksObtained || 0, 10);
-        if (!isNaN(o) && o > 0) obt += o;
-        maxM += (sem.subjects ? sem.subjects.length * 100 : 900);
-      });
-      if (obt > 0) {
-        marksDisplay = `${obt}/${maxM}`;
-      } else {
-        marksDisplay = semList[0]?.resultStatus || 'PASS';
-      }
-    }
-
-    const copLineHtml = copList.length > 0 
-      ? `<div class="session-cop-line">COP : ${copList.join(',')}</div>` 
-      : (sess.copText && !sess.copText.includes('Audit') && sess.copText !== 'N/A' && !sess.copText.includes('N/A') ? `<div class="session-cop-line">${sess.copText}</div>` : '');
-
-    // By default, expand all sessions (as shown in official AKTU OneView mobile view)
-    const isExpanded = true;
-
-    // Build Semesters HTML inside this session
-    let semsHtml = '';
-    semList.forEach(sem => {
-      const semNum = sem.semesterId || '1';
-      const isOdd = (sem.evenOdd && sem.evenOdd.toLowerCase().includes('odd')) || (parseSemNumber(semNum) % 2 !== 0);
-      const evenOddText = sem.evenOdd || (isOdd ? 'Odd' : 'Even');
-      const totalSubs = sem.totalSubjects || (sem.subjects ? sem.subjects.length : 0);
-      const theorySubs = sem.theorySubjects || (sem.subjects ? sem.subjects.filter(s => (s.type || 'Theory').toLowerCase() === 'theory').length : 5);
-      const practSubs = sem.practicalSubjects || (sem.subjects ? sem.subjects.filter(s => (s.type || '').toLowerCase() === 'practical').length : 4);
-      const marksObt = sem.totalMarksObtained || '--';
-      const status = sem.resultStatus || 'PASS';
-      const sgpa = sem.sgpa || '--';
-      const decDate = sem.dateOfDeclaration || '--';
-
-      // Build 7-column Subject Rows
-      let rowsHtml = '';
-      if (sem.subjects && sem.subjects.length > 0) {
-        sem.subjects.forEach(sub => {
-          const code = sub.code || '';
-          const name = sub.name || '';
-          const type = sub.type || 'Theory';
-          const internal = (sub.internal !== undefined && sub.internal !== null && String(sub.internal).trim() !== '') ? sub.internal : '--';
-          const external = (sub.external !== undefined && sub.external !== null && String(sub.external).trim() !== '') ? sub.external : '--';
-          const backPaper = (sub.backPaper && String(sub.backPaper).trim() !== '') ? sub.backPaper : '--';
-          const grade = (sub.grade && String(sub.grade).trim() !== '') ? sub.grade : '--';
-
-          // Styling logic:
-          // 1. Red row if grade is F (Back Paper Failed)
-          // 2. Light blue row if type is CA / Audit (Sports and Yoga, NSS, etc.)
-          // 3. Normal white row for regular or cleared back papers
-          let rowClass = '';
-          const isCA = type.toLowerCase() === 'ca' || 
-                       code.toUpperCase().startsWith('BVA') || 
-                       name.toLowerCase().includes('sports') || 
-                       name.toLowerCase().includes('yoga') || 
-                       name.toLowerCase().includes('nss');
-
-          const isFailed = grade === 'F' || grade === 'CP' || (String(external) !== '--' && parseInt(external) < 15 && type.toLowerCase() === 'theory');
-
-          if (isFailed) {
-            rowClass = 'row-back-failed';
-          } else if (isCA) {
-            rowClass = 'row-audit-ca';
-          }
-
-          rowsHtml += `
-            <tr class="${rowClass}">
-              <td>${code}</td>
-              <td class="text-left-name">${name}</td>
-              <td>${type}</td>
-              <td>${internal}</td>
-              <td>${isCA ? '' : external}</td>
-              <td>${backPaper}</td>
-              <td>${isCA ? '' : grade}</td>
+    if (!s.declared) {
+      return `
+        <div class="semester-column">
+          ${metaTableHtml}
+          <table class="marks-grid-table">
+            <tr>
+              <td style="text-align: center; color: red; font-weight: bold; padding: 15px; font-size: 11px; border: 1px solid #999999;">
+                No Result found for the above semester.
+              </td>
             </tr>
-          `;
-        });
-      } else {
-        rowsHtml = `
-          <tr>
-            <td colspan="7" style="text-align: center; padding: 15px; color: #888;">
-              No subject records declared for this semester.
-            </td>
+          </table>
+        </div>
+      `;
+    }
+
+    let tableRowsHtml = '';
+    if (s.subjects && s.subjects.length > 0) {
+      s.subjects.forEach(sub => {
+        const grade = (sub.grade || '').trim().toUpperCase();
+        const extStr = (sub.external !== undefined && sub.external !== null) ? String(sub.external).trim().toUpperCase() : '';
+        const extNum = parseInt(extStr, 10);
+        const typeStr = (sub.type || '').trim().toLowerCase();
+        const backPaperVal = (sub.backPaper || '').trim();
+
+        // Standard AKTU passing grades: A+, A, B+, B, C, D, E, P, S, etc.
+        const passingGrades = ['A+', 'A', 'B+', 'B', 'C', 'D', 'E', 'P', 'S', 'PASS', 'CLEARED'];
+        const isPassingGrade = passingGrades.includes(grade);
+
+        let isFailed = false;
+        if (isPassingGrade) {
+          isFailed = false;
+        } else if (
+          grade === 'F' || 
+          grade.includes('#') || 
+          grade.startsWith('F') || 
+          grade === 'ABS' || 
+          grade === 'AB' || 
+          grade === 'ABSENT' ||
+          grade === 'FAIL' ||
+          extStr === 'AB' || 
+          extStr === 'ABS' || 
+          extStr === 'ABSENT'
+        ) {
+          isFailed = true;
+        } else if (!grade && !isNaN(extNum) && (typeStr.includes('theory') || typeStr === '' || !typeStr.includes('practical')) && extNum < 21 && sub.type !== 'CA') {
+          isFailed = true;
+        }
+
+        const isAudit = (sub.type === 'CA' || (sub.code && sub.code.toUpperCase().startsWith('BVA')) || (sub.name && (sub.name.toLowerCase().includes('sports') || sub.name.toLowerCase().includes('yoga') || sub.name.toLowerCase().includes('nss'))));
+
+        let rowClass = '';
+        if (isFailed) {
+          rowClass = 'class="fail-row"';
+        } else if (isAudit) {
+          rowClass = 'class="audit-row"';
+        }
+
+        let displayType = sub.type || '';
+        if (!displayType) {
+          const nameLower = (sub.name || '').toLowerCase();
+          const codeUpper = (sub.code || '').toUpperCase();
+          if (nameLower.includes('lab') || nameLower.includes('practical') || nameLower.includes('graphics') || nameLower.includes('workshop')) {
+            displayType = 'Practical';
+          } else if (codeUpper.startsWith('BVA') || nameLower.includes('sports') || nameLower.includes('yoga') || codeUpper.includes('AUDIT')) {
+            displayType = 'CA';
+          } else {
+            displayType = 'Theory';
+          }
+        }
+
+        const displayBackPaper = backPaperVal ? backPaperVal : '--';
+
+        tableRowsHtml += `
+          <tr ${rowClass}>
+            <td>${sub.code || ''}</td>
+            <td>${sub.name || ''}</td>
+            <td>${displayType}</td>
+            <td style="text-align: center;">${sub.internal !== undefined ? sub.internal : ''}</td>
+            <td style="text-align: center;">${isAudit ? '' : (sub.external !== undefined ? sub.external : '')}</td>
+            <td style="text-align: center;">${displayBackPaper}</td>
+            <td style="text-align: center; font-weight: bold;">${isAudit ? '' : (sub.grade || '')}</td>
           </tr>
         `;
+      });
+    } else {
+      tableRowsHtml = `
+        <tr>
+          <td colspan="7" style="text-align: center; color: #666666; padding: 15px;">
+            No subject marks available.
+          </td>
+        </tr>
+      `;
+    }
+
+    return `
+      <div class="semester-column">
+        ${metaTableHtml}
+        <table class="marks-grid-table">
+          <thead>
+            <tr>
+              <th style="width: 14%;">Code</th>
+              <th style="width: 38%;">Name</th>
+              <th style="width: 12%;">Type</th>
+              <th style="width: 9%; text-align: center;">Internal</th>
+              <th style="width: 9%; text-align: center;">External</th>
+              <th style="width: 10%; text-align: center;">Back Paper</th>
+              <th style="width: 8%; text-align: center;">Grade</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRowsHtml}
+          </tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  // 2. Render sessions
+  const sessionsContainer = document.getElementById('sessionsContainer');
+  sessionsContainer.innerHTML = '';
+
+  if (sessions && sessions.length > 0) {
+    sessions.forEach((session, idx) => {
+      const sessionPanel = document.createElement('div');
+      
+      // Make the first (latest) session expanded by default so user sees result immediately without excessive scroll
+      // Older sessions remain collapsed to save vertical screen space!
+      sessionPanel.className = idx === 0 ? 'session-panel active' : 'session-panel';
+
+      let semTextStr = session.semText || '';
+      if (semTextStr && !semTextStr.includes('Semester') && !semTextStr.includes('semesters') && !semTextStr.includes('Semesters')) {
+        semTextStr = `Semesters : ${semTextStr}`;
+      }
+      let marksTextStr = session.marksText || '';
+      if (marksTextStr && !marksTextStr.includes('Marks') && !marksTextStr.includes('Result')) {
+        marksTextStr = `Marks : ${marksTextStr}`;
       }
 
-      semsHtml += `
-        <div class="semester-single-block">
-          <!-- 2-Column Semester Metadata Table -->
-          <table class="sem-meta-table">
-            <tbody>
-              <tr>
-                <td class="m-col-key">Semester</td>
-                <td class="m-col-val">: ${semNum}</td>
-                <td class="m-col-key">Even/Odd</td>
-                <td class="m-col-val">: ${evenOddText}</td>
-              </tr>
-              <tr>
-                <td class="m-col-key">Total Subjects</td>
-                <td class="m-col-val">: ${totalSubs}</td>
-                <td class="m-col-key">Theory Subjects</td>
-                <td class="m-col-val">: ${theorySubs}</td>
-              </tr>
-              <tr>
-                <td class="m-col-key">Practical Subjects</td>
-                <td class="m-col-val">: ${practSubs}</td>
-                <td class="m-col-key">Total Marks Obt.</td>
-                <td class="m-col-val">: ${marksObt}</td>
-              </tr>
-              <tr>
-                <td class="m-col-key">Result Status</td>
-                <td class="m-col-val">: ${status}</td>
-                <td class="m-col-key">SGPA</td>
-                <td class="m-col-val">: ${sgpa}</td>
-              </tr>
-              <tr>
-                <td class="m-col-key">Date of Declaration</td>
-                <td class="m-col-val">: ${decDate}</td>
-                <td class="m-col-key"></td>
-                <td class="m-col-val"></td>
-              </tr>
-            </tbody>
-          </table>
+      // Check COP in session
+      const cops = [];
+      const checkCops = (sem) => {
+        if (!sem || !sem.subjects) return;
+        sem.subjects.forEach(sub => {
+          const g = (sub.grade || '').trim().toUpperCase();
+          if ((g === 'F' || g === 'FAIL' || g === 'ABS') && sub.code && !cops.includes(sub.code)) {
+            cops.push(sub.code);
+          }
+        });
+      };
+      checkCops(session.oddSemester);
+      checkCops(session.evenSemester);
+      if (session.semesterList) {
+        session.semesterList.forEach(checkCops);
+      }
 
-          <!-- 7-Column Subject Marksheet Table -->
-          <div class="marks-table-responsive-wrapper">
-            <table class="aktu-official-marks-table">
-              <thead>
-                <tr>
-                  <th style="width: 14%;">Code</th>
-                  <th style="width: 38%;">Name</th>
-                  <th style="width: 10%;">Type</th>
-                  <th style="width: 9%;">Internal</th>
-                  <th style="width: 9%;">External</th>
-                  <th style="width: 10%;">Back Paper</th>
-                  <th style="width: 10%;">Grade</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rowsHtml}
-              </tbody>
-            </table>
+      let copTextStr = cops.length > 0 ? `COP : ${cops.join(', ')}` : (session.copText || '');
+      if (copTextStr && !copTextStr.includes('COP') && copTextStr !== 'N/A') {
+        copTextStr = `COP : ${copTextStr}`;
+      }
+
+      sessionPanel.innerHTML = `
+        <div class="session-bar">
+          <div class="session-bar-text">
+            <span>Session : ${session.sessionName || session.sessionTitle}</span>
+            <span>${semTextStr}</span>
+            <span>${marksTextStr}</span>
+            ${copTextStr && copTextStr !== 'N/A' ? `<span>${copTextStr}</span>` : ''}
+          </div>
+        </div>
+        <div class="session-content">
+          ${session.remarks ? `<div style="background-color: #ffff00; color: #ff0000; font-weight: bold; font-size: 11px; padding: 6px 12px; border: 1px solid #e6e600; margin: 10px 0; border-radius: 2px;">${session.remarks}</div>` : ''}
+          <div class="semester-grid">
+            ${renderSemesterColumn(session.oddSemester)}
+            ${renderSemesterColumn(session.evenSemester)}
           </div>
         </div>
       `;
+
+      // Set up click handler on the session bar for expanding/collapsing
+      sessionPanel.querySelector('.session-bar').addEventListener('click', () => {
+        sessionPanel.classList.toggle('active');
+      });
+
+      sessionsContainer.appendChild(sessionPanel);
     });
-
-    htmlBuffer += `
-      <div class="session-wrapper-card">
-        <!-- Collapsible Pink / Peach Session Strip -->
-        <div class="session-pink-bar" onclick="toggleSession('sess-${sessIdx}')">
-          <div class="session-bar-top-row">
-            <span>Session : ${sessName}</span>
-            <span>Semesters : ${semNumbersText}</span>
-            <span>Marks : ${marksDisplay}</span>
-            <span class="session-arrow-icon" id="arrow-sess-${sessIdx}">▲</span>
-          </div>
-          ${copLineHtml}
-        </div>
-
-        <!-- Session Content Container -->
-        <div class="session-body-container" id="sess-${sessIdx}" style="display: block;">
-          ${semsHtml}
-        </div>
+  } else {
+    sessionsContainer.innerHTML = `
+      <div style="text-align: center; padding: 20px; font-weight: bold; color: #666666; border: 1px solid #dddddd; background: #fafafa;">
+        No session results found.
       </div>
     `;
-  });
+  }
 
-  sessionsContainer.innerHTML = htmlBuffer;
+  // 3. Setup static panel handlers (Minor/Major and MOOCs)
+  const minorHeader = document.getElementById('minorResHeader');
+  if (minorHeader) {
+    minorHeader.addEventListener('click', () => {
+      minorHeader.parentElement.classList.toggle('active');
+    });
+  }
 
-  // Collapsible toggle for Sessions
-  window.toggleSession = function(sessId) {
-    const el = document.getElementById(sessId);
-    const arrow = document.getElementById('arrow-' + sessId);
-    if (!el) return;
-    const isHidden = el.style.display === 'none';
-    el.style.display = isHidden ? 'block' : 'none';
-    if (arrow) arrow.innerText = isHidden ? '▲' : '▼';
-  };
-
-  // Static Collapsible Toggles (Minor/Major & MOOCs)
-  const setupToggle = (btnId, contentId, arrowId) => {
-    const btn = document.getElementById(btnId);
-    const content = document.getElementById(contentId);
-    const arrow = document.getElementById(arrowId);
-    if (btn && content) {
-      btn.addEventListener('click', () => {
-        const isHidden = content.style.display === 'none';
-        content.style.display = isHidden ? 'block' : 'none';
-        if (arrow) arrow.innerText = isHidden ? '▲' : '▼';
-      });
-    }
-  };
-
-  setupToggle('minorMajorToggle', 'minorMajorContent', 'minorMajorArrow');
-  setupToggle('moocsToggle', 'moocsContent', 'moocsArrow');
+  const moocsHeader = document.getElementById('moocsHeader');
+  if (moocsHeader) {
+    moocsHeader.addEventListener('click', () => {
+      moocsHeader.parentElement.classList.toggle('active');
+    });
+  }
 });

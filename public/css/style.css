@@ -1,5 +1,6 @@
 /* ============================================================
-   Official AKTU OneView Theme & Modern Mobile-First Stylesheet
+   Official AKTU OneView Theme & Stylesheet
+   Modeled after authentic reference: https://aktu-result-site.vercel.app
    ============================================================ */
 
 * {
@@ -14,13 +15,6 @@ body {
   color: #333333;
   background-color: #ffffff;
   min-height: 100vh;
-}
-
-/* Watermark background on the result marksheet */
-body.result-body {
-  background: #f8fafc url('/assets/aktu_logo.png') no-repeat center 220px fixed;
-  background-size: 320px;
-  padding: 10px 0 40px 0;
 }
 
 /* ============================================================
@@ -95,32 +89,6 @@ body.search-body {
   box-shadow: 0 0 5px rgba(42, 23, 77, 0.2);
 }
 
-/* Auto DOB Match Pill */
-.dob-badge {
-  display: none;
-  background: #f0fdf4;
-  border: 1px solid #86efac;
-  border-radius: 4px;
-  padding: 8px 12px;
-  margin-bottom: 16px;
-  font-size: 12px;
-  color: #166534;
-  text-align: left;
-  font-family: Arial, sans-serif;
-  animation: fadeIn 0.2s ease;
-}
-
-.dob-badge .badge-icon {
-  font-weight: bold;
-  color: #15803d;
-  margin-right: 4px;
-}
-
-.dob-badge .badge-text {
-  font-weight: 600;
-}
-
-/* Search Button */
 .proceed-btn {
   width: auto;
   min-width: 180px;
@@ -128,7 +96,7 @@ body.search-body {
   border: none;
   background-color: #721313;
   color: #ffffff;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -136,6 +104,7 @@ body.search-body {
   border-radius: 0px;
   transition: background-color 0.2s ease;
   display: inline-block;
+  font-family: Arial, sans-serif;
 }
 
 .proceed-btn:hover {
@@ -146,24 +115,460 @@ body.search-body {
   transform: translateY(1px);
 }
 
-/* Quick links under search */
-.search-footer-links {
-  margin-top: 25px;
+/* ============================================================
+   RESULT PAGE (Exact Reference Site Layout)
+   ============================================================ */
+body.result-body {
+  background: #ffffff url('/assets/watermark_logo_white.png') no-repeat center center fixed;
+  background-size: 400px;
+  min-height: 100vh;
+  padding: 10px 0 40px 0;
+  font-family: Verdana, Arial, sans-serif;
+  font-size: 11px;
+  color: #333333;
+}
+
+.container {
+  width: 95%;
+  max-width: 1100px;
+  margin: 0 auto;
+  background-color: transparent;
+}
+
+/* Top Banner Header */
+.banner-wrapper {
+  width: 100%;
+  margin-bottom: 15px;
+}
+
+.banner-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-bottom: 2px solid #800000;
+}
+
+.portal-blue-title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 14px;
+  margin: 12px 0 20px 0;
+  color: #0066cc;
+  font-family: Arial, sans-serif;
+}
+
+.section-header-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eeeeee;
+  margin: 18px 0 10px 0;
+  padding-bottom: 5px;
+}
+
+.section-header-row .section-title {
+  margin: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: bold;
+  margin: 18px 0 10px 0;
+  color: #000000;
+  border-bottom: 1px solid #eeeeee;
+  padding-bottom: 5px;
+  font-family: Arial, sans-serif;
+}
+
+.mobile-print-btn {
+  display: none;
+}
+
+/* Student Personal Info Grid Table */
+.student-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 22px;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.student-table td {
+  padding: 7px 10px;
+  border: 1px solid #dddddd;
+  vertical-align: middle;
+  font-size: 11px;
+}
+
+.student-table td.label-cell {
+  font-weight: bold;
+  width: 180px;
+  background-color: #fcfcfc;
+}
+
+.student-table td.colon-cell {
+  width: 10px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.student-table td.print-cell {
+  width: 120px;
+  text-align: center;
+  background-color: #fafafa;
+  border-left: 2px solid #dddddd;
+}
+
+.print-link {
+  color: #0066cc;
+  text-decoration: underline;
+  font-weight: bold;
+  font-size: 11px;
+}
+
+.print-link:hover {
+  color: #004499;
+}
+
+/* Session Accordion Bar */
+.session-panel {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.session-bar {
+  background-color: #FDEDEC;
+  border: 1px solid #F5C6CB;
+  color: #78281F;
+  padding: 9px 14px;
+  font-weight: bold;
+  font-size: 11.5px;
+  cursor: pointer;
+  border-radius: 3px;
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: Arial, sans-serif;
+  gap: 8px;
+}
+
+.session-bar:hover {
+  background-color: #FADBD8;
+}
+
+.session-bar-text {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+}
+
+.session-bar::after {
+  content: '▼';
+  font-size: 9px;
+  flex-shrink: 0;
+}
+
+.session-panel.active .session-bar::after {
+  content: '▲';
+}
+
+.session-content {
+  display: none;
+  margin-top: 8px;
+  margin-bottom: 15px;
+}
+
+.session-panel.active .session-content {
+  display: block;
+}
+
+/* Side-by-Side Semester Grid on Desktop */
+.semester-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.semester-column {
+  width: 100%;
+}
+
+/* Semester Summary Meta Table */
+.meta-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+
+.meta-table td {
+  padding: 3px 5px;
+  border: none !important;
+  background-color: transparent !important;
+  vertical-align: middle;
+  font-size: 11px;
+}
+
+.meta-table td.label {
+  font-weight: bold;
+  width: 130px;
+  text-align: left;
+}
+
+.meta-table td.colon {
+  width: 8px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.meta-table td.value {
+  text-align: left;
+}
+
+/* Marks Sheet Table - NO HORIZONTAL SCROLL */
+.marks-grid-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+  margin-bottom: 10px;
+  background-color: #ffffff;
+  table-layout: fixed;
+}
+
+.marks-grid-table th {
+  background-color: #f5f5f5;
+  border: 1px solid #999999;
+  padding: 5px 6px;
+  font-weight: bold;
+  font-size: 11px;
+  text-align: left;
+}
+
+.marks-grid-table td {
+  border: 1px solid #999999;
+  padding: 5px 6px;
+  font-size: 11px;
+  vertical-align: middle;
+}
+
+.marks-grid-table tr:hover {
+  background-color: #fafafa;
+}
+
+/* Failed Back Paper Row Highlight */
+.marks-grid-table tr.fail-row {
+  background-color: #ff9999 !important;
+}
+
+.marks-grid-table tr.fail-row:hover {
+  background-color: #ff8080 !important;
+}
+
+/* CA / Audit Course Highlight */
+.marks-grid-table tr.audit-row {
+  background-color: #bfe3f2 !important;
+}
+
+.marks-grid-table tr.audit-row:hover {
+  background-color: #add8ec !important;
+}
+
+/* Red Warning Footer Note */
+.footer-note {
+  color: #FF0000;
+  font-weight: bold;
+  text-align: center;
+  margin-top: 30px;
+  line-height: 1.6;
   font-size: 11px;
   font-family: Arial, sans-serif;
 }
 
-.search-footer-links a {
-  color: #64748b;
-  text-decoration: none;
-  transition: color 0.2s;
-}
+/* ============================================================
+   RESPONSIVE MOBILE OPTIMIZATION (Exact Reference Site)
+   ============================================================ */
+@media (max-width: 768px) {
+  body.result-body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 6px 0 30px 0;
+  }
 
-.search-footer-links a:hover {
-  color: #721313;
-  text-decoration: underline;
+  .container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    box-sizing: border-box !important;
+    padding: 0 8px !important;
+  }
+
+  .banner-wrapper {
+    width: 100% !important;
+    margin-bottom: 10px;
+  }
+
+  .banner-img {
+    width: 100% !important;
+    height: auto;
+  }
+
+  .portal-blue-title {
+    font-size: 13.5px;
+    margin: 6px 0 10px 0;
+  }
+
+  .section-header-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    margin: 10px 0 6px 0;
+    padding-bottom: 4px;
+    box-sizing: border-box;
+  }
+
+  .section-header-row .section-title {
+    font-size: 13px !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  .mobile-print-btn {
+    display: inline-flex !important;
+    align-items: center;
+    color: #0066cc !important;
+    font-size: 11px !important;
+    font-weight: bold;
+    text-decoration: underline !important;
+    cursor: pointer;
+    white-space: nowrap !important;
+  }
+
+  /* Student Table: Fits 100% width on phone */
+  .student-table {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed;
+    margin-bottom: 14px;
+  }
+
+  .student-table td {
+    padding: 5px 4px;
+    font-size: 10px;
+    line-height: 1.3;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .student-table td.colon-cell {
+    display: none !important;
+  }
+
+  .student-table td.print-cell {
+    display: none !important;
+  }
+
+  .student-table td.label-col-1 {
+    width: 25% !important;
+    font-size: 9.5px;
+    padding: 5px 3px;
+    background-color: #fcfcfc;
+  }
+
+  .student-table td#studentInstitute,
+  .student-table td#studentCourse,
+  .student-table td#studentRoll,
+  .student-table td#studentName,
+  .student-table td#studentFather {
+    width: 26% !important;
+    padding: 5px 4px;
+  }
+
+  .student-table td.label-col-2 {
+    width: 23% !important;
+    font-size: 9.5px;
+    padding: 5px 3px;
+    background-color: #fcfcfc;
+  }
+
+  .student-table td#studentBranch,
+  .student-table td#studentEnroll,
+  .student-table td#studentHindiName,
+  .student-table td#studentGender,
+  .student-table td.empty-value {
+    width: 26% !important;
+    padding: 5px 4px;
+  }
+
+  /* Session Accordion on Mobile */
+  .session-panel {
+    width: 100% !important;
+    margin-bottom: 10px;
+  }
+
+  .session-bar {
+    width: 100% !important;
+    font-size: 10.5px;
+    padding: 8px 10px;
+    line-height: 1.35;
+  }
+
+  .session-bar-text {
+    gap: 6px;
+  }
+
+  /* Stack Semesters cleanly on Mobile */
+  .semester-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .meta-table td {
+    padding: 2px 3px;
+    font-size: 10px;
+  }
+
+  .meta-table td.label {
+    width: 90px;
+  }
+
+  .meta-table td.colon {
+    width: 6px;
+  }
+
+  .meta-table td.value {
+    width: auto;
+  }
+
+  /* CRITICAL: Marks Grid Table 100% width, NO horizontal scrolling */
+  .marks-grid-table {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+    margin-top: 6px;
+    margin-bottom: 10px;
+  }
+
+  .marks-grid-table th,
+  .marks-grid-table td {
+    padding: 3.5px 2px !important;
+    font-size: 9px !important;
+    line-height: 1.25;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .footer-note {
+    font-size: 10px;
+    margin-top: 20px;
+    padding: 0 6px;
+  }
 }
 
 /* ============================================================
@@ -221,424 +626,9 @@ body.search-body {
   to { transform: rotate(360deg); }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 /* ============================================================
-   AUTHENTIC AKTU ONEVIEW PORTAL RESULT STYLES
+   DOB Not Found Modal
    ============================================================ */
-body.result-body {
-  background: #ffffff url('/assets/aktu_logo.png') no-repeat center 280px;
-  background-size: 340px;
-  background-attachment: fixed;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 11.5px;
-  color: #000000;
-  margin: 0;
-  padding: 10px 8px 30px 8px;
-}
-
-.oneview-main-wrapper {
-  max-width: 920px;
-  margin: 0 auto;
-  background: rgba(255, 255, 255, 0.94);
-  padding: 12px 14px;
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
-}
-
-/* 1. Header Banner */
-.official-header-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 2px solid #721313;
-  padding-bottom: 8px;
-  margin-bottom: 12px;
-}
-
-.header-emblem {
-  width: 62px;
-  height: 62px;
-  object-fit: contain;
-  flex-shrink: 0;
-}
-
-.header-titles {
-  text-align: center;
-  flex: 1;
-  padding: 0 10px;
-}
-
-.univ-title-hi {
-  font-size: 13.5px;
-  font-weight: bold;
-  color: #721313;
-  line-height: 1.3;
-}
-
-.univ-title-en {
-  font-size: 12.5px;
-  font-weight: bold;
-  color: #721313;
-  margin-top: 2px;
-}
-
-.univ-title-sub {
-  font-size: 10px;
-  color: #333333;
-  margin-top: 2px;
-}
-
-.header-kalam-portrait {
-  width: 58px;
-  height: 68px;
-  object-fit: cover;
-  border-radius: 4px;
-  border: 1px solid #d1d5db;
-  flex-shrink: 0;
-}
-
-/* 2. Main Blue Heading */
-.portal-main-heading {
-  font-size: 18px;
-  font-weight: bold;
-  color: #0b5cab;
-  text-align: center;
-  margin: 14px 0 10px;
-  letter-spacing: -0.3px;
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-/* 3. Subheader Row */
-.student-result-top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
-}
-
-.sr-text {
-  font-size: 13px;
-  font-weight: bold;
-  color: #000000;
-}
-
-.print-link {
-  font-size: 11.5px;
-  color: #0066cc;
-  text-decoration: underline;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-/* 4. 4-Column Student Information Table */
-.student-info-grid-table {
-  width: 100%;
-  border-collapse: collapse;
-  border: 1px solid #c8ced3;
-  margin-bottom: 16px;
-  background: #ffffff;
-}
-
-.student-info-grid-table td {
-  border: 1px solid #c8ced3;
-  padding: 5px 8px;
-  font-size: 11px;
-  vertical-align: middle;
-}
-
-.student-info-grid-table .col-lbl {
-  font-weight: bold;
-  color: #000000;
-  width: 18%;
-  background-color: #ffffff;
-}
-
-.student-info-grid-table .col-val {
-  color: #000000;
-  font-weight: 500;
-  width: 32%;
-  background-color: #ffffff;
-  word-break: break-word;
-}
-
-/* 5. Section: One View Result */
-.oneview-section-heading {
-  font-size: 14px;
-  font-weight: bold;
-  color: #000000;
-  margin: 16px 0 10px;
-}
-
-/* 6. Session Strips & Panels */
-.session-wrapper-card {
-  margin-bottom: 12px;
-}
-
-.session-pink-bar {
-  background-color: #fce8e6;
-  border: 1px solid #f5c6cb;
-  color: #721313;
-  padding: 8px 12px;
-  cursor: pointer;
-  border-radius: 2px;
-  user-select: none;
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-.session-bar-top-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  font-weight: bold;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.session-cop-line {
-  font-size: 11.5px;
-  font-weight: bold;
-  color: #721313;
-  margin-top: 4px;
-  word-break: break-all;
-}
-
-.session-arrow-icon {
-  font-size: 11px;
-  font-weight: bold;
-  color: #721313;
-}
-
-.session-body-container {
-  background: #ffffff;
-  border: 1px solid #c8ced3;
-  border-top: none;
-  padding: 12px 10px;
-}
-
-.semester-single-block {
-  margin-bottom: 16px;
-}
-
-.semester-single-block:last-child {
-  margin-bottom: 0;
-}
-
-/* 7. Semester Metadata Table (2 Columns) */
-.sem-meta-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 10px;
-  font-size: 11px;
-}
-
-.sem-meta-table td {
-  padding: 2.5px 4px;
-  vertical-align: middle;
-  border: none;
-}
-
-.m-col-key {
-  font-weight: bold;
-  width: 18%;
-  color: #000000;
-}
-
-.m-col-val {
-  font-weight: 500;
-  width: 32%;
-  color: #000000;
-}
-
-/* 8. 7-Column Marks Table */
-.marks-table-responsive-wrapper {
-  width: 100%;
-  overflow-x: auto;
-  margin-bottom: 18px;
-  -webkit-overflow-scrolling: touch;
-}
-
-.aktu-official-marks-table {
-  width: 100%;
-  border-collapse: collapse;
-  border: 1px solid #c8ced3;
-  min-width: 580px;
-  background: #ffffff;
-}
-
-.aktu-official-marks-table th {
-  border: 1px solid #c8ced3;
-  background: #ffffff;
-  color: #000000;
-  padding: 7px 5px;
-  font-size: 11px;
-  font-weight: bold;
-  text-align: center;
-}
-
-.aktu-official-marks-table td {
-  border: 1px solid #c8ced3;
-  padding: 5px 6px;
-  font-size: 11px;
-  text-align: center;
-  vertical-align: middle;
-  color: #000000;
-}
-
-.aktu-official-marks-table td.text-left-name {
-  text-align: left;
-  padding-left: 8px;
-  font-weight: 500;
-}
-
-/* Highlighted Rows */
-.row-back-failed {
-  background-color: #ff9999 !important;
-  color: #000000 !important;
-  font-weight: bold !important;
-}
-
-.row-audit-ca {
-  background-color: #cce5ff !important;
-  color: #000000 !important;
-  font-weight: 500 !important;
-}
-
-/* 9. Static Collapsible Panels (Minor/Major & MOOCs) */
-.static-collapsible-bar {
-  background-color: #fce8e6;
-  border: 1px solid #f5c6cb;
-  color: #721313;
-  padding: 8px 12px;
-  margin-top: 10px;
-  cursor: pointer;
-  border-radius: 2px;
-  font-size: 12px;
-  font-weight: bold;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  user-select: none;
-}
-
-.static-collapsible-content {
-  background: #ffffff;
-  border: 1px solid #c8ced3;
-  border-top: none;
-}
-
-/* 10. Red Footer Note */
-.aktu-red-footer-note {
-  color: #d90429;
-  font-weight: bold;
-  font-size: 10.5px;
-  text-align: center;
-  margin: 22px 0 16px;
-  line-height: 1.5;
-  font-family: Arial, sans-serif;
-}
-
-/* 11. Bottom Action */
-.bottom-action-container {
-  text-align: center;
-  margin: 15px 0 35px;
-}
-
-.btn-new-search-maroon {
-  display: inline-block;
-  background-color: #721313;
-  color: #ffffff !important;
-  font-weight: bold;
-  font-size: 13px;
-  padding: 10px 36px;
-  text-decoration: none;
-  border-radius: 2px;
-  letter-spacing: 0.5px;
-  transition: background-color 0.2s;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-}
-
-.btn-new-search-maroon:hover {
-  background-color: #550d0d;
-}
-
-@media (max-width: 600px) {
-  .official-header-banner {
-    padding-bottom: 6px;
-    margin-bottom: 8px;
-    gap: 4px;
-  }
-  .header-emblem {
-    width: 44px;
-    height: 44px;
-  }
-  .header-kalam-portrait {
-    width: 44px;
-    height: 52px;
-  }
-  .header-titles {
-    padding: 0 4px;
-  }
-  .univ-title-hi {
-    font-size: 10.5px;
-    line-height: 1.25;
-  }
-  .univ-title-en {
-    font-size: 9.5px;
-  }
-  .univ-title-sub {
-    font-size: 8px;
-  }
-  .portal-main-heading {
-    font-size: 16px;
-    margin: 8px 0 6px;
-  }
-  .student-info-grid-table td {
-    padding: 4px 5px;
-    font-size: 9.5px;
-  }
-  .student-info-grid-table .col-lbl {
-    font-size: 9px;
-  }
-  .sem-meta-table td {
-    font-size: 9.5px;
-    padding: 2px 3px;
-  }
-  .session-bar-top-row {
-    font-size: 10.5px;
-  }
-  .session-cop-line {
-    font-size: 10.5px;
-  }
-  .aktu-official-marks-table th,
-  .aktu-official-marks-table td {
-    padding: 4.5px 4px;
-    font-size: 10px;
-  }
-}
-
-@media print {
-  .no-print {
-    display: none !important;
-  }
-  body.result-body {
-    background: #ffffff !important;
-    padding: 0 !important;
-  }
-  .oneview-main-wrapper {
-    box-shadow: none !important;
-    padding: 0 !important;
-    max-width: 100% !important;
-    width: 100% !important;
-  }
-}
-
-/* ==========================================================================
-   DOB Not Found Modal & Action Buttons
-   ========================================================================== */
 .modal-backdrop {
   position: fixed;
   top: 0;
@@ -724,4 +714,33 @@ body.result-body {
   background: #e2e8f0;
   color: #0f172a;
   border-color: #94a3b8;
+}
+
+/* ============================================================
+   PRINT SETTINGS
+   ============================================================ */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body.result-body {
+    background: #ffffff !important;
+    padding: 0 !important;
+  }
+  .container {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .session-content {
+    display: block !important;
+  }
+  .session-bar {
+    cursor: default;
+    background-color: #FDEDEC !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .proceed-btn, .print-link {
+    display: none !important;
+  }
 }

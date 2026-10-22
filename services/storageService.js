@@ -11,6 +11,7 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 
 const RESULTS_FILE = path.join(DATA_DIR, 'results_cache.json');
+const STUDENTS_DB_FILE = path.join(DATA_DIR, 'students_db.json');
 const LOGS_FILE = path.join(DATA_DIR, 'query_logs.json');
 const DOB_FILE = path.join(DATA_DIR, 'students_dob.json');
 const WRONG_DOB_FILE = path.join(DATA_DIR, 'wrong_dob_attempts.json');
@@ -39,6 +40,7 @@ const writeLocal = (filePath, data) => {
 
 // In-memory / local caches
 let localResults = readLocal(RESULTS_FILE, {});
+let studentsDb = readLocal(STUDENTS_DB_FILE, {});
 let localLogs = readLocal(LOGS_FILE, []);
 let dobMap = {};
 
@@ -122,7 +124,9 @@ const getStudentResult = async (rollNumber) => {
   }
 
   // Fallback to local cache
-  return localResults[cleanRoll] || null;
+  if (localResults[cleanRoll]) return localResults[cleanRoll];
+  if (studentsDb[cleanRoll]) return studentsDb[cleanRoll];
+  return null;
 };
 
 // Log a search query

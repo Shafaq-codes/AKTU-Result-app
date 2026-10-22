@@ -2,117 +2,130 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AKTU-One-View | Dr. A.P.J. Abdul Kalam Technical University</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
+  <title>AKTU OneView – Student Result</title>
+  <link rel="stylesheet" href="/css/style.css?v=4.0">
   <link rel="icon" href="/assets/aktu_logo.png" type="image/png">
-  <link rel="stylesheet" href="/css/style.css?v=3.0">
   <meta name="theme-color" content="#721313">
 </head>
 <body class="result-body">
   
-  <div class="oneview-main-wrapper">
+  <div class="container">
     
-    <!-- Top University Official Header -->
-    <div class="official-header-banner no-print">
-      <img src="/assets/aktu_logo.png" alt="AKTU Emblem" class="header-emblem">
-      
-      <div class="header-titles">
-        <div class="univ-title-hi">डा० ए०पी०जे० अब्दुल कलाम प्राविधिक विश्वविद्यालय, उत्तर प्रदेश, लखनऊ</div>
-        <div class="univ-title-en">Dr. A.P.J. Abdul Kalam Technical University, Uttar Pradesh, Lucknow</div>
-        <div class="univ-title-sub">( Formerly Uttar Pradesh Technical University )</div>
-      </div>
-      
-      <img src="/assets/kalam_sir.png" alt="Dr. A.P.J. Abdul Kalam" class="header-kalam-portrait">
+    <!-- Top banner image -->
+    <div class="banner-wrapper no-print">
+      <img src="/assets/AKTUBanner.jpg" alt="AKTU Banner" class="banner-img">
     </div>
 
-    <!-- Centered Blue Title -->
-    <h1 class="portal-main-heading">AKTU-One-View</h1>
-
-    <!-- Subheader: Student Result & Print Link -->
-    <div class="student-result-top-bar">
-      <span class="sr-text">Student Result</span>
-      <a href="javascript:void(0)" onclick="window.print()" class="print-link no-print">Print One View</a>
+    <div class="portal-blue-title">
+      AKTU-One-View
     </div>
 
-    <!-- 4-Column Student Information Table -->
-    <table class="student-info-grid-table">
-      <tbody>
-        <tr>
-          <td class="col-lbl">Institute Code & Name</td>
-          <td class="col-val" id="studentInstitute">--</td>
-          <td class="col-lbl">Branch Code & Name</td>
-          <td class="col-val" id="studentBranch">--</td>
-        </tr>
-        <tr>
-          <td class="col-lbl">Course Code & Name</td>
-          <td class="col-val" id="studentCourse">--</td>
-          <td class="col-lbl">EnrollmentNo</td>
-          <td class="col-val" id="studentEnroll">--</td>
-        </tr>
-        <tr>
-          <td class="col-lbl">RollNo</td>
-          <td class="col-val" id="studentRoll">--</td>
-          <td class="col-lbl">Hindi Name</td>
-          <td class="col-val" id="studentHindiName">--</td>
-        </tr>
-        <tr>
-          <td class="col-lbl">Name</td>
-          <td class="col-val" id="studentName">--</td>
-          <td class="col-lbl">Gender</td>
-          <td class="col-val" id="studentGender">--</td>
-        </tr>
-        <tr>
-          <td class="col-lbl">Father's Name</td>
-          <td class="col-val" id="studentFather">--</td>
-          <td class="col-lbl"></td>
-          <td class="col-val"></td>
-        </tr>
-      </tbody>
+    <!-- Student Result Header -->
+    <div class="section-header-row">
+      <div class="section-title">Student Result</div>
+      <a href="javascript:void(0)" onclick="window.print()" class="mobile-print-btn no-print" id="mobilePrintBtn">Print One View</a>
+    </div>
+
+    <!-- Student Personal Info Grid Table -->
+    <table class="student-table" id="studentProfileCard">
+      <tr>
+        <td class="label-cell label-col-1">Institute Code & Name</td>
+        <td class="colon-cell">:</td>
+        <td id="studentInstitute">--</td>
+        
+        <td class="label-cell label-col-2">Branch Code & Name</td>
+        <td class="colon-cell">:</td>
+        <td id="studentBranch">--</td>
+        
+        <!-- Print cell -->
+        <td rowspan="5" class="print-cell no-print">
+          <a href="javascript:void(0)" onclick="window.print()" class="print-link" id="printLink">Print One View</a>
+        </td>
+      </tr>
+      <tr>
+        <td class="label-cell label-col-1">Course Code & Name</td>
+        <td class="colon-cell">:</td>
+        <td id="studentCourse">--</td>
+        
+        <td class="label-cell label-col-2">EnrollmentNo</td>
+        <td class="colon-cell">:</td>
+        <td id="studentEnroll">--</td>
+      </tr>
+      <tr>
+        <td class="label-cell label-col-1">RollNo</td>
+        <td class="colon-cell">:</td>
+        <td id="studentRoll">--</td>
+        
+        <td class="label-cell label-col-2">Hindi Name</td>
+        <td class="colon-cell">:</td>
+        <td id="studentHindiName" style="font-family: Arial, sans-serif;">--</td>
+      </tr>
+      <tr>
+        <td class="label-cell label-col-1">Name</td>
+        <td class="colon-cell">:</td>
+        <td id="studentName">--</td>
+        
+        <td class="label-cell label-col-2">Gender</td>
+        <td class="colon-cell">:</td>
+        <td id="studentGender">--</td>
+      </tr>
+      <tr>
+        <td class="label-cell label-col-1">Father's Name</td>
+        <td class="colon-cell">:</td>
+        <td id="studentFather">--</td>
+        
+        <td class="label-cell label-col-2 empty-label" style="background-color: #fcfcfc;"></td>
+        <td class="colon-cell" style="background-color: #fcfcfc;"></td>
+        <td class="empty-value" style="background-color: #fcfcfc;"></td>
+      </tr>
     </table>
 
-    <!-- Section: One View Result -->
-    <div class="oneview-section-heading">One View Result</div>
+    <!-- One View Result header -->
+    <div class="section-title">One View Result</div>
 
-    <!-- Container for Dynamically Injected Sessions & Semesters -->
+    <!-- Grouped Sessions Container -->
     <div id="sessionsContainer">
-      <!-- Injected by result.js -->
+      <!-- Session blocks containing side-by-side or stacked semester grids injected dynamically -->
     </div>
 
-    <!-- Minor / Major Result Panel (Collapsible) -->
-    <div class="static-collapsible-bar" id="minorMajorToggle">
-      <span>Minor/Major Result</span>
-      <span class="arrow-indicator" id="minorMajorArrow">▼</span>
-    </div>
-    <div class="static-collapsible-content" id="minorMajorContent" style="display: none;">
-      <div style="padding: 10px 14px; font-size: 11px; color: #555;">
-        No active minor or major course records found for this candidate.
+    <!-- Minor/Major Result header bar -->
+    <div class="session-panel" style="margin-top: 20px;">
+      <div class="session-bar" id="minorResHeader">Minor/Major Result</div>
+      <div class="session-content" id="minorResContent" style="padding: 12px; background-color: #ffffff; border: 1px solid #dddddd; border-top: none;">
+        <table class="marks-grid-table">
+          <tr>
+            <td style="text-align: center; color: #666666;">No Result found.</td>
+          </tr>
+        </table>
       </div>
     </div>
 
-    <!-- MOOCs Certifications Panel (Collapsible) -->
-    <div class="static-collapsible-bar" id="moocsToggle">
-      <span>MOOCs Certifications</span>
-      <span class="arrow-indicator" id="moocsArrow">▼</span>
-    </div>
-    <div class="static-collapsible-content" id="moocsContent" style="display: none;">
-      <div style="padding: 10px 14px; font-size: 11px; color: #555;">
-        No active MOOCs certification records found for this candidate.
+    <!-- MOOCs Certifications header bar -->
+    <div class="session-panel" style="margin-top: 12px;">
+      <div class="session-bar" id="moocsHeader">MOOCs Certifications</div>
+      <div class="session-content" id="moocsContent" style="padding: 12px; background-color: #ffffff; border: 1px solid #dddddd; border-top: none;">
+        <table class="marks-grid-table">
+          <tr>
+            <td style="text-align: center; color: #666666;">No Certifications found.</td>
+          </tr>
+        </table>
       </div>
     </div>
 
-    <!-- Red Footer Disclaimer Note -->
-    <div class="aktu-red-footer-note">
+    <!-- Red Warning Footer Note -->
+    <div class="footer-note">
       Note: University doesn't own for the errors or omissions, if any, in this statement.<br>
       Designed & Developed by AKTU-SDC Team
     </div>
 
-    <!-- Bottom Action Button -->
-    <div class="bottom-action-container no-print">
-      <a href="/" class="btn-new-search-maroon">NEW SEARCH</a>
+    <!-- New Search link/button at the very bottom -->
+    <div style="text-align: center; margin: 25px 0 40px 0;" class="no-print">
+      <a href="/" class="proceed-btn active" id="newSearchBtn" style="text-decoration: none; width: auto; padding: 10px 28px; display: inline-block;">New Search</a>
     </div>
 
   </div>
 
-  <script src="/js/result.js?v=3.0"></script>
+  <script src="/js/result.js?v=4.0"></script>
 </body>
 </html>
