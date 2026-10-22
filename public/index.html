@@ -7,18 +7,18 @@
   <link rel="icon" href="/assets/aktu_logo.png" type="image/png">
   <link rel="stylesheet" href="/css/style.css?v=4.0">
   <meta name="theme-color" content="#721313">
+  <script>
+    (function() {
+      var isAndroidApp = !!window.AndroidBridge;
+      var isWebView = /;\s*wv\b|Version\/4\.0.*Chrome/i.test(navigator.userAgent);
+      var isAppParam = window.location.search.indexOf('app=android') !== -1;
+      if (!isAndroidApp && !isWebView && !isAppParam) {
+        window.location.replace('/download');
+      }
+    })();
+  </script>
 </head>
 <body class="search-body">
-
-  <!-- Top Right Download App Link -->
-  <a href="/download" class="top-download-btn no-print" title="Download Android App">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-      <polyline points="7 10 12 15 17 10"></polyline>
-      <line x1="12" y1="15" x2="12" y2="3"></line>
-    </svg>
-    Download App
-  </a>
 
   <div class="search-card" id="searchCard">
     <img src="/assets/aktu_logo.png" alt="AKTU Emblem" class="search-logo">
@@ -42,18 +42,6 @@
       <button class="proceed-btn" id="searchBtn">
         SEARCH
       </button>
-    </div>
-
-    <!-- Direct APK Download Link -->
-    <div class="search-apk-wrap">
-      <a href="/downloads/aktu-result-app-v1.2.apk" class="search-apk-link" download>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline>
-          <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
-        Download Android App (APK v1.2)
-      </a>
     </div>
   </div>
 

@@ -15,8 +15,26 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve static frontend files
-app.use(express.static(path.join(__dirname, 'public')));
+// Helper to detect Android APK WebView
+function isAndroidAppRequest(req) {
+  const ua = req.headers['user-agent'] || '';
+  const xRequestedWith = req.headers['x-requested-with'] || '';
+  return xRequestedWith === 'com.aktu.resultdesk' ||
+         /;\s*wv\b/i.test(ua) ||
+         /Version\/4\.0.*Chrome/i.test(ua) ||
+         req.query.app === 'android';
+}
+
+// Redirect web visitors from / and /index.html to /download
+app.get(['/', '/index.html'], (req, res, next) => {
+  if (isAndroidAppRequest(req)) {
+    return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
+  return res.redirect(302, '/download');
+});
+
+// Serve static frontend files (disable auto-serving index.html on /)
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // Connect to Database (MongoDB or local cache fallback)
 connectDB();
@@ -236,9 +254,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Fallback to index.html
+// Fallback: index.html for app, redirect to /download for web
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  if (isAndroidAppRequest(req)) {
+    return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  }
+  return res.redirect(302, '/download');
 });
 
 // Start Server
