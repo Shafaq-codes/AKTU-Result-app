@@ -603,9 +603,22 @@ class MainActivity : AppCompatActivity() {
                         if (m) sgpa = m[1];
                     }
 
-                    // Ensure clean integer semester number
-                    var semNumMatch = semText.match(/([0-9]+)/);
-                    var finalSemNumber = semNumMatch ? semNumMatch[1] : String(idx + 1);
+                    // Ensure clean integer semester number with Roman numeral support
+                    var parsedSem = '';
+                    var cleanSem = (semText || '').trim().toUpperCase();
+                    if (/^(SEM(ESTER)?[\s\-_]*)?I$/.test(cleanSem)) parsedSem = '1';
+                    else if (/^(SEM(ESTER)?[\s\-_]*)?II$/.test(cleanSem)) parsedSem = '2';
+                    else if (/^(SEM(ESTER)?[\s\-_]*)?III$/.test(cleanSem)) parsedSem = '3';
+                    else if (/^(SEM(ESTER)?[\s\-_]*)?IV$/.test(cleanSem)) parsedSem = '4';
+                    else if (/^(SEM(ESTER)?[\s\-_]*)?V$/.test(cleanSem)) parsedSem = '5';
+                    else if (/^(SEM(ESTER)?[\s\-_]*)?VI$/.test(cleanSem)) parsedSem = '6';
+                    else if (/^(SEM(ESTER)?[\s\-_]*)?VII$/.test(cleanSem)) parsedSem = '7';
+                    else if (/^(SEM(ESTER)?[\s\-_]*)?VIII$/.test(cleanSem)) parsedSem = '8';
+                    else {
+                        var semNumMatch = cleanSem.match(/([0-9]+)/);
+                        if (semNumMatch) parsedSem = semNumMatch[1];
+                    }
+                    var finalSemNumber = parsedSem || String(idx + 1);
                     var calcEvenOdd = (parseInt(finalSemNumber) % 2 === 0) ? 'Even' : 'Odd';
 
                     var subjects = [];
@@ -642,6 +655,11 @@ class MainActivity : AppCompatActivity() {
                             subjects: subjects
                         });
                     }
+                });
+
+                // Sort scraped semesters chronologically ascending (Sem 1 -> Sem 2 -> Sem 3 -> Sem 4)
+                semesters.sort(function(a, b) {
+                    return parseInt(a.semester || 0) - parseInt(b.semester || 0);
                 });
 
                 var payload = {

@@ -12,28 +12,112 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function parseSemNumber(val) {
     if (!val) return 1;
-    const s = String(val).replace(/[^0-9]/g, '');
-    const num = parseInt(s, 10);
-    return isNaN(num) ? 1 : num;
+    const str = String(val).trim().toUpperCase();
+    if (/^(SEM(ESTER)?[\s\-_]*)?I$/.test(str) || str === '1' || str.includes('1ST')) return 1;
+    if (/^(SEM(ESTER)?[\s\-_]*)?II$/.test(str) || str === '2' || str.includes('2ND')) return 2;
+    if (/^(SEM(ESTER)?[\s\-_]*)?III$/.test(str) || str === '3' || str.includes('3RD')) return 3;
+    if (/^(SEM(ESTER)?[\s\-_]*)?IV$/.test(str) || str === '4' || str.includes('4TH')) return 4;
+    if (/^(SEM(ESTER)?[\s\-_]*)?V$/.test(str) || str === '5' || str.includes('5TH')) return 5;
+    if (/^(SEM(ESTER)?[\s\-_]*)?VI$/.test(str) || str === '6' || str.includes('6TH')) return 6;
+    if (/^(SEM(ESTER)?[\s\-_]*)?VII$/.test(str) || str === '7' || str.includes('7TH')) return 7;
+    if (/^(SEM(ESTER)?[\s\-_]*)?VIII$/.test(str) || str === '8' || str.includes('8TH')) return 8;
+
+    const m = str.match(/([0-9]+)/);
+    if (m) {
+      const num = parseInt(m[1], 10);
+      if (!isNaN(num) && num > 0) return num;
+    }
+    return 1;
+  }
+
+  function getMinSem(sess) {
+    const nums = [];
+    if (sess.semesterList && Array.isArray(sess.semesterList)) {
+      sess.semesterList.forEach(s => nums.push(parseSemNumber(s.semesterId || s.semester)));
+    }
+    if (sess.oddSemester && sess.oddSemester.semesterId) {
+      nums.push(parseSemNumber(sess.oddSemester.semesterId));
+    }
+    if (sess.evenSemester && sess.evenSemester.semesterId) {
+      nums.push(parseSemNumber(sess.evenSemester.semesterId));
+    }
+    if (sess.semText) {
+      const matches = String(sess.semText).match(/\d+/g);
+      if (matches) matches.forEach(m => nums.push(parseInt(m, 10)));
+    }
+    return nums.length > 0 ? Math.min(...nums) : 99;
+  }
+
+  function compareSessions(a, b) {
+    const minA = getMinSem(a);
+    const minB = getMinSem(b);
+    if (minA !== minB) return minA - minB;
+
+    const nameA = String(a.sessionName || a.sessionTitle || '');
+    const nameB = String(b.sessionName || b.sessionTitle || '');
+    const yearMatchA = nameA.match(/(\d{4})/);
+    const yearMatchB = nameB.match(/(\d{4})/);
+    const yearA = yearMatchA ? parseInt(yearMatchA[1], 10) : 0;
+    const yearB = yearMatchB ? parseInt(yearMatchB[1], 10) : 0;
+    if (yearA !== yearB) return yearA - yearB;
+
+    const isBackA = /back|cop|ex/i.test(nameA);
+    const isBackB = /back|cop|ex/i.test(nameB);
+    if (!isBackA && isBackB) return -1;
+    if (isBackA && !isBackB) return 1;
+
+    return nameA.localeCompare(nameB);
   }
 
   function mapSemestersToSessions(semesters) {
     if (!semesters || !Array.isArray(semesters) || semesters.length === 0) return [];
+    
+    // Sort all semesters ascending by semester number
+    const sortedInputSemesters = [...semesters].sort((a, b) => parseSemNumber(a.semester) - parseSemNumber(b.semester));
+
     const sessionsMap = {};
-    semesters.forEach(s => {
+    sortedInputSemesters.forEach(s => {
       const sName = s.session || 'Regular';
       if (!sessionsMap[sName]) sessionsMap[sName] = [];
       sessionsMap[sName].push(s);
     });
 
-    return Object.keys(sessionsMap).map(sessionName => {
+    const sessions = Object.keys(sessionsMap).map(sessionName => {
       const sems = sessionsMap[sessionName];
+      // Sort within session ascending
+      sems.sort((a, b) => parseSemNumber(a.semester) - parseSemNumber(b.semester));
+
       let oddSem = sems.find(s => (s.evenOdd && s.evenOdd.toLowerCase().includes('odd')) || (parseSemNumber(s.semester) % 2 !== 0));
       let evenSem = sems.find(s => (s.evenOdd && s.evenOdd.toLowerCase().includes('even')) || (parseSemNumber(s.semester) % 2 === 0));
       if (!oddSem && !evenSem && sems.length > 0) {
         oddSem = sems[0];
         if (sems.length > 1) evenSem = sems[1];
+      } else if (oddSem && !evenSem && sems.length > 1) {
+        evenSem = sems.find(s => s !== oddSem);
+      } else if (!oddSem && evenSem && sems.length > 1) {
+        oddSem = sems.find(s => s !== evenSem);
       }
+
+      const buildSemObj = (sem) => {
+        if (!sem) return null;
+        const num = parseSemNumber(sem.semester);
+        const hasSubjects = sem.subjects && sem.subjects.length > 0;
+        return {
+          semesterId: sem.semester ? String(sem.semester) : String(num),
+          evenOdd: sem.evenOdd || (num % 2 === 0 ? 'Even' : 'Odd'),
+          totalSubjects: sem.totalSubjects || (hasSubjects ? sem.subjects.length : 0),
+          theorySubjects: sem.theorySubjects || (hasSubjects ? sem.subjects.filter(x => (x.type || 'Theory').toLowerCase() === 'theory').length : 0),
+          practicalSubjects: sem.practicalSubjects || (hasSubjects ? sem.subjects.filter(x => (x.type || '').toLowerCase() === 'practical').length : 0),
+          totalMarksObtained: sem.totalMarksObtained || sem.totalMarksObt || '',
+          resultStatus: sem.resultStatus || 'PASS',
+          sgpa: sem.sgpa || '',
+          dateOfDeclaration: sem.dateOfDeclaration || '',
+          declared: (sem.declared !== false) || hasSubjects,
+          subjects: sem.subjects || []
+        };
+      };
+
+      const fullSemesterList = sems.map(buildSemObj).filter(Boolean);
 
       // Calculate COP codes (only where grade is F)
       const cops = [];
@@ -53,7 +137,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       sems.forEach(s => {
         const m = parseInt(s.totalMarksObtained || s.totalMarksObt || 0, 10);
         if (!isNaN(m) && m > 0) totalMarksObt += m;
-        totalMax += (s.subjects ? s.subjects.length * 100 : 900);
+        totalMax += (s.subjects && s.subjects.length > 0 ? s.subjects.length * 100 : 900);
       });
       const marksText = totalMarksObt > 0 ? `${totalMarksObt}/${totalMax}` : (sems[0]?.resultStatus || 'PASS');
 
@@ -63,35 +147,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         semText: sems.map(s => s.semester).join(', '),
         marksText: marksText,
         copText: copText,
-        oddSemester: oddSem ? {
-          semesterId: oddSem.semester,
-          evenOdd: oddSem.evenOdd || 'Odd',
-          totalSubjects: oddSem.totalSubjects || (oddSem.subjects ? oddSem.subjects.length : 0),
-          theorySubjects: oddSem.theorySubjects || (oddSem.subjects ? oddSem.subjects.filter(x => (x.type || 'Theory').toLowerCase() === 'theory').length : 5),
-          practicalSubjects: oddSem.practicalSubjects || (oddSem.subjects ? oddSem.subjects.filter(x => (x.type || '').toLowerCase() === 'practical').length : 4),
-          totalMarksObtained: oddSem.totalMarksObtained || oddSem.totalMarksObt || '',
-          resultStatus: oddSem.resultStatus || 'PASS',
-          sgpa: oddSem.sgpa || '',
-          dateOfDeclaration: oddSem.dateOfDeclaration || '',
-          declared: true,
-          subjects: oddSem.subjects || []
-        } : null,
-        evenSemester: evenSem ? {
-          semesterId: evenSem.semester,
-          evenOdd: evenSem.evenOdd || 'Even',
-          totalSubjects: evenSem.totalSubjects || (evenSem.subjects ? evenSem.subjects.length : 0),
-          theorySubjects: evenSem.theorySubjects || (evenSem.subjects ? evenSem.subjects.filter(x => (x.type || 'Theory').toLowerCase() === 'theory').length : 5),
-          practicalSubjects: evenSem.practicalSubjects || (evenSem.subjects ? evenSem.subjects.filter(x => (x.type || '').toLowerCase() === 'practical').length : 4),
-          totalMarksObtained: evenSem.totalMarksObtained || evenSem.totalMarksObt || '',
-          resultStatus: evenSem.resultStatus || 'PASS',
-          sgpa: evenSem.sgpa || '',
-          dateOfDeclaration: evenSem.dateOfDeclaration || '',
-          declared: true,
-          subjects: evenSem.subjects || []
-        } : null,
-        semesterList: [oddSem, evenSem].filter(Boolean)
+        oddSemester: buildSemObj(oddSem),
+        evenSemester: buildSemObj(evenSem),
+        semesterList: fullSemesterList
       };
     });
+
+    // Ensure sessions are sorted chronologically ascending (Year 1 before Year 2)
+    sessions.sort(compareSessions);
+    return sessions;
   }
 
   const countDeclaredSubjects = (data) => {
@@ -137,6 +201,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
       console.error('Failed to load result:', e);
     }
+  }
+
+  if (!resultData || !resultData.studentInfo) {
+    window.location.href = '/';
+    return;
+  }
+
+  // Ensure sessions in resultData are ALWAYS sorted chronologically ascending (Sem 1-2 before Sem 3-4)
+  if (resultData.sessions && Array.isArray(resultData.sessions)) {
+    resultData.sessions.sort(compareSessions);
   }
 
   if (!resultData || !resultData.studentInfo) {
@@ -350,9 +424,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     sessions.forEach((session, idx) => {
       const sessionPanel = document.createElement('div');
       
-      // Make the first (latest) session expanded by default so user sees result immediately without excessive scroll
-      // Older sessions remain collapsed to save vertical screen space!
-      sessionPanel.className = idx === 0 ? 'session-panel active' : 'session-panel';
+      // Keep all sessions expanded so students immediately see their entire academic marksheet
+      sessionPanel.className = 'session-panel active';
 
       let semTextStr = session.semText || '';
       if (semTextStr && !semTextStr.includes('Semester') && !semTextStr.includes('semesters') && !semTextStr.includes('Semesters')) {
@@ -385,6 +458,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         copTextStr = `COP : ${copTextStr}`;
       }
 
+      // Render all semester columns in this session cleanly in ascending order
+      let semesterColumnsHtml = '';
+      if (session.semesterList && session.semesterList.length > 0) {
+        // Sort list ascending by semester number so Sem 1 is left, Sem 2 is right
+        const sortedList = [...session.semesterList].sort((a, b) => parseSemNumber(a.semesterId || a.semester) - parseSemNumber(b.semesterId || b.semester));
+        semesterColumnsHtml = sortedList.map(sem => renderSemesterColumn(sem)).join('');
+      } else {
+        const semCols = [];
+        if (session.oddSemester && session.evenSemester) {
+          const oNum = parseSemNumber(session.oddSemester.semesterId);
+          const eNum = parseSemNumber(session.evenSemester.semesterId);
+          if (oNum <= eNum) {
+            semCols.push(renderSemesterColumn(session.oddSemester));
+            semCols.push(renderSemesterColumn(session.evenSemester));
+          } else {
+            semCols.push(renderSemesterColumn(session.evenSemester));
+            semCols.push(renderSemesterColumn(session.oddSemester));
+          }
+        } else {
+          if (session.oddSemester) semCols.push(renderSemesterColumn(session.oddSemester));
+          if (session.evenSemester) semCols.push(renderSemesterColumn(session.evenSemester));
+        }
+        semesterColumnsHtml = semCols.join('');
+      }
+
       sessionPanel.innerHTML = `
         <div class="session-bar">
           <div class="session-bar-text">
@@ -397,8 +495,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <div class="session-content">
           ${session.remarks ? `<div style="background-color: #ffff00; color: #ff0000; font-weight: bold; font-size: 11px; padding: 6px 12px; border: 1px solid #e6e600; margin: 10px 0; border-radius: 2px;">${session.remarks}</div>` : ''}
           <div class="semester-grid">
-            ${renderSemesterColumn(session.oddSemester)}
-            ${renderSemesterColumn(session.evenSemester)}
+            ${semesterColumnsHtml}
           </div>
         </div>
       `;

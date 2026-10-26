@@ -7,34 +7,40 @@ const storageService = require('./storageService');
 function parseSemesterNumber(val) {
   if (!val) return 1;
   const str = String(val).trim().toUpperCase();
-  if (str === 'I' || str === 'SEM 1' || str === '1') return 1;
-  if (str === 'II' || str === 'SEM 2' || str === '2') return 2;
-  if (str === 'III' || str === 'SEM 3' || str === '3') return 3;
-  if (str === 'IV' || str === 'SEM 4' || str === '4') return 4;
-  if (str === 'V' || str === 'SEM 5' || str === '5') return 5;
-  if (str === 'VI' || str === 'SEM 6' || str === '6') return 6;
-  if (str === 'VII' || str === 'SEM 7' || str === '7') return 7;
-  if (str === 'VIII' || str === 'SEM 8' || str === '8') return 8;
-  const num = parseInt(str.replace(/[^0-9]/g, ''));
-  return isNaN(num) ? 1 : num;
+  if (/^(SEM(ESTER)?[\s\-_]*)?I$/.test(str) || str === '1' || str.includes('1ST')) return 1;
+  if (/^(SEM(ESTER)?[\s\-_]*)?II$/.test(str) || str === '2' || str.includes('2ND')) return 2;
+  if (/^(SEM(ESTER)?[\s\-_]*)?III$/.test(str) || str === '3' || str.includes('3RD')) return 3;
+  if (/^(SEM(ESTER)?[\s\-_]*)?IV$/.test(str) || str === '4' || str.includes('4TH')) return 4;
+  if (/^(SEM(ESTER)?[\s\-_]*)?V$/.test(str) || str === '5' || str.includes('5TH')) return 5;
+  if (/^(SEM(ESTER)?[\s\-_]*)?VI$/.test(str) || str === '6' || str.includes('6TH')) return 6;
+  if (/^(SEM(ESTER)?[\s\-_]*)?VII$/.test(str) || str === '7' || str.includes('7TH')) return 7;
+  if (/^(SEM(ESTER)?[\s\-_]*)?VIII$/.test(str) || str === '8' || str.includes('8TH')) return 8;
+
+  const m = str.match(/([0-9]+)/);
+  if (m) {
+    const num = parseInt(m[1], 10);
+    if (!isNaN(num) && num > 0) return num;
+  }
+  return 1;
 }
 
 function buildSemesterObj(sem) {
   if (!sem) return null;
   const semNum = parseSemesterNumber(sem.semester);
   const isOdd = sem.evenOdd ? sem.evenOdd.toLowerCase().includes('odd') : (semNum % 2 !== 0);
+  const subs = sem.subjects || [];
   return {
-    semesterId: sem.semester || String(semNum),
+    semesterId: sem.semester ? String(sem.semester) : String(semNum),
     evenOdd: sem.evenOdd || (isOdd ? 'Odd' : 'Even'),
-    totalSubjects: (sem.subjects || []).length,
-    theorySubjects: (sem.subjects || []).filter(sub => (sub.type || 'Theory').toLowerCase() === 'theory').length,
-    practicalSubjects: (sem.subjects || []).filter(sub => (sub.type || '').toLowerCase() === 'practical').length,
+    totalSubjects: subs.length,
+    theorySubjects: subs.filter(sub => (sub.type || 'Theory').toLowerCase() === 'theory').length,
+    practicalSubjects: subs.filter(sub => (sub.type || '').toLowerCase() === 'practical').length,
     totalMarksObtained: sem.totalMarksObtained || sem.totalMarksObt || '',
     resultStatus: sem.resultStatus || '',
     sgpa: sem.sgpa || '',
     dateOfDeclaration: sem.dateOfDeclaration || sem.declarationDate || '',
-    declared: true,
-    subjects: (sem.subjects || []).map(sub => ({
+    declared: (sem.declared !== false) || (subs.length > 0),
+    subjects: subs.map(sub => ({
       code: sub.code || '',
       name: sub.name || '',
       type: sub.type || '',
@@ -55,8 +61,11 @@ function mapTargetSchemaToOurSchema(targetData) {
     throw new Error('Invalid target response schema.');
   }
 
+  // Pre-sort semesters ascending by semester number
+  const sortedInputSemesters = [...semesters].sort((a, b) => parseSemesterNumber(a.semester) - parseSemesterNumber(b.semester));
+
   const sessionsMap = {};
-  semesters.forEach(sem => {
+  sortedInputSemesters.forEach(sem => {
     const sName = sem.session || 'Regular';
     if (!sessionsMap[sName]) {
       sessionsMap[sName] = [];
@@ -66,6 +75,9 @@ function mapTargetSchemaToOurSchema(targetData) {
 
   const sessions = Object.keys(sessionsMap).map(sessionName => {
     const sems = sessionsMap[sessionName];
+    // Sort semesters inside session ascending
+    sems.sort((a, b) => parseSemesterNumber(a.semester) - parseSemesterNumber(b.semester));
+
     let oddSem = sems.find(s => {
       const num = parseSemesterNumber(s.semester);
       return (s.evenOdd && s.evenOdd.toLowerCase().includes('odd')) || (num % 2 !== 0);
@@ -86,6 +98,7 @@ function mapTargetSchemaToOurSchema(targetData) {
 
     const oddSemesterObj = buildSemesterObj(oddSem);
     const evenSemesterObj = buildSemesterObj(evenSem);
+    const fullSemesterList = sems.map(buildSemesterObj).filter(Boolean);
 
     const cops = [];
     sems.forEach(s => {
@@ -98,10 +111,10 @@ function mapTargetSchemaToOurSchema(targetData) {
     });
     const copText = cops.length > 0 ? `COP: ${cops.join(', ')}` : 'N/A';
 
-    const semIds = sems.map(s => s.semester).sort((a, b) => parseInt(a) - parseInt(b));
+    const semIds = sems.map(s => s.semester).sort((a, b) => parseSemesterNumber(a) - parseSemesterNumber(b));
     const semText = semIds.join(', ');
 
-    const latestSem = [...sems].sort((a, b) => parseInt(b.semester) - parseInt(a.semester))[0];
+    const latestSem = [...sems].sort((a, b) => parseSemesterNumber(b.semester) - parseSemesterNumber(a.semester))[0];
     const marksText = latestSem ? (latestSem.resultStatus || 'N/A') : 'N/A';
 
     return {
@@ -113,11 +126,37 @@ function mapTargetSchemaToOurSchema(targetData) {
       copText,
       oddSemester: oddSemesterObj,
       evenSemester: evenSemesterObj,
-      semesterList: [oddSemesterObj, evenSemesterObj].filter(Boolean)
+      semesterList: fullSemesterList
     };
   });
 
-  sessions.sort((a, b) => a.sessionName.localeCompare(b.sessionName));
+  // Sort sessions chronologically ascending (Year 1 before Year 2)
+  sessions.sort((a, b) => {
+    const getMinSem = (sess) => {
+      const nums = (sess.semesterList || []).map(s => parseSemesterNumber(s.semesterId));
+      if (sess.oddSemester) nums.push(parseSemesterNumber(sess.oddSemester.semesterId));
+      if (sess.evenSemester) nums.push(parseSemesterNumber(sess.evenSemester.semesterId));
+      return nums.length > 0 ? Math.min(...nums) : 99;
+    };
+    const minA = getMinSem(a);
+    const minB = getMinSem(b);
+    if (minA !== minB) return minA - minB;
+
+    const nameA = String(a.sessionName || '');
+    const nameB = String(b.sessionName || '');
+    const yearMatchA = nameA.match(/(\d{4})/);
+    const yearMatchB = nameB.match(/(\d{4})/);
+    const yearA = yearMatchA ? parseInt(yearMatchA[1], 10) : 0;
+    const yearB = yearMatchB ? parseInt(yearMatchB[1], 10) : 0;
+    if (yearA !== yearB) return yearA - yearB;
+
+    const isBackA = /back|cop|ex/i.test(nameA);
+    const isBackB = /back|cop|ex/i.test(nameB);
+    if (!isBackA && isBackB) return -1;
+    if (isBackA && !isBackB) return 1;
+
+    return nameA.localeCompare(nameB);
+  });
 
   return {
     studentInfo: {
